@@ -1,6 +1,6 @@
 # Define the allowed letters and the required conditions
-allowed_letters = {'p', 'o', 'd', 'n', 'e', 'i', 'w'}
-required_letter = 'w'
+allowed_letters = {'q', 'u', 'd', 'e', 't', 'n', 'o'}
+required_letter = 'o'
 min_length = 4
 
 
