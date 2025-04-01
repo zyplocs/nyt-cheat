@@ -1,33 +1,63 @@
 # Define the allowed letters and the required conditions
-allowed_letters = {'q', 'u', 'd', 'e', 't', 'n', 'o'}
-required_letter = 'o'
+allowed_letters = {"d", "i", "l", "t", "m", "a", "n"}
+required_letter = "l"
 min_length = 4
 
 
-# Load words from the system dictionary
-def load_words():
-    with open('/Users/elijohnson/miscpy/cheats/english-words/words_alpha.txt',
-              "r") as f:
+def load_words() -> set[str]:
+    """
+    Load words from the system dictionary file.
+
+    Returns:
+        A set of lowercase words read from the file.
+    """
+    with open(
+        "/Users/elijohnson/miscpy/cheats/english-words/words_alpha.txt", "r"
+    ) as f:
         words = {line.strip().lower() for line in f}
 
         return words
 
 
-# Filter words based on criteria
-def filter_words(word_list, allowed_letters, required_letter, min_length):
+def filter_words(
+    word_list: set[str],
+    allowed_letters: set[str],
+    required_letter: str,
+    min_length: int,
+) -> list[str]:
+    """
+    Filter words based on specified criteria.
+
+    Args:
+        word_list: A set of words to filter.
+        allowed_letters: A set of allowed letters; each word must only contain these.
+        required_letter: A letter that must appear in every word.
+        min_length: The minimum length a word must have.
+
+    Returns:
+        A sorted list of words that meet the criteria.
+    """
     filtered_words = set()
     for word in word_list:
-        if (len(word) >= min_length and required_letter in word and set(word).issubset(allowed_letters)):
+        if (
+            len(word) >= min_length
+            and required_letter in word
+            and set(word).issubset(allowed_letters)
+        ):
             filtered_words.add(word)
 
     return sorted(filtered_words)
 
 
 # Main script logic
-english_words = load_words()
-valid_words = filter_words(english_words,
-                           allowed_letters,
-                           required_letter,
-                           min_length)
+def main():
+    english_words = load_words()
+    valid_words = filter_words(
+        english_words, allowed_letters, required_letter, min_length
+    )
 
-print(f"{len(valid_words)} Words Found:\n", valid_words)
+    print(f"{len(valid_words)} Words Found:\n", valid_words)
+
+
+if __name__ == "__main__":
+    main()
