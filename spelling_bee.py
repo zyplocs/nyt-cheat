@@ -12,7 +12,7 @@ def load_words() -> set[str]:
         A set of lowercase words read from the file.
     """
     with open(
-        "/Users/elijohnson/miscpy/cheats/english-words/words_alpha.txt", "r"
+        "/Users/elij/zypy/cheats/english-words/words_alpha.txt", "r"
     ) as f:
         words = {line.strip().lower() for line in f}
 

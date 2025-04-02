@@ -71,7 +71,7 @@ def filter_words(
 
 # Main script logic
 def main():
-    filepath = "/Users/elijohnson/miscpy/cheats/english-words/words_alpha.txt"
+    filepath = "/Users/elij/zypy/cheats/english-words/words_alpha.txt"
     english_words = load_words(filepath)
     valid_words = filter_words(
         english_words,
