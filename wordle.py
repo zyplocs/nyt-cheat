@@ -1,14 +1,14 @@
 # Define search conditions
 word_length = 5
-letters_in_specific_positions = {2: "o"}
-letters_to_include = {"a", "u"}
-letters_not_allowed = {"e", "r", "s", "d", "l", "c", "n"}
+letters_in_specific_positions = {1: "r", 2: "i", 3: "l", 4: "l"}
+letters_to_include = set()
+letters_not_allowed = {"e", "t", "o", "a", "s", "d", "f", "g", "h", "c", "n"}
 
 
 # Load words from system dictionary
 def load_words(filepath: str) -> set[str]:
     """
-    Load words from a file, converting each to lowercase, and return them as a set.
+    Load words from a file, convert each to lowercase, + return them as a set.
 
     Args:
         filepath: The path to the file containing one word per line.
