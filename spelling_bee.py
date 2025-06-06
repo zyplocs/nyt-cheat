@@ -8,8 +8,9 @@ def load_words() -> set[str]:
     """
     Load words from the system dictionary file.
 
-    Returns:
-        A set of lowercase words read from the file.
+    Returns
+    -------
+    words: A set of lowercase words read from the file.
     """
     with open(
         "/Users/elijohnson/miscpy/cheats/english-words/words_alpha.txt", "r"
@@ -24,18 +25,20 @@ def filter_words(
     allowed_letters: set[str],
     required_letter: str,
     min_length: int,
-) -> list[str]:
+    ) -> list[str]:
     """
     Filter words based on specified criteria.
 
-    Args:
-        word_list: A set of words to filter.
-        allowed_letters: A set of allowed letters; each word must only contain these.
-        required_letter: A letter that must appear in every word.
-        min_length: The minimum length a word must have.
+    Arguments
+    ---------
+    word_list: A set of words to filter.
+    allowed_letters: A set of allowed letters; each word must only contain these.
+    required_letter: A letter that must appear in every word.
+    min_length: The minimum length a word must have.
 
-    Returns:
-        A sorted list of words that meet the criteria.
+    Returns
+    -------
+    filtered_words: A sorted list of words that meet the criteria.
     """
     filtered_words = set()
     for word in word_list:
