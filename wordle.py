@@ -1,14 +1,14 @@
 """Script to cheat on NYT Wordle."""
-
+from pathlib import Path
 from typing import Iterable
 
-# Define search conditions
+# Search conditions
 WORD_LENGTH = 5
 LETTERS_IN_SPECIFIC_POSITIONS = {1: "n", 3: "o"}
 LETTERS_TO_INCLUDE = {"i"}
 LETTERS_NOT_ALLOWED = {"e", "r", "t", "u", "a", "s", "l", "c"}
 
-def load_words(filepath: str) -> set[str]:
+def load_words(filepath: str | Path) -> set[str]:
     """
     Load words from a file, convert each to lowercase, + return them as a set.
 
@@ -21,7 +21,9 @@ def load_words(filepath: str) -> set[str]:
     - `set[str]`: A set of words from the file.
     """
     with open(filepath) as f:
-        return {line.strip().lower() for line in f}
+        words = {line.strip().lower() for line in f}
+
+    return words
 
 def filter_words(
     words: Iterable[str],
@@ -36,7 +38,7 @@ def filter_words(
 
     Parameters
     ----------
-    - `word_list`: A set of words to filter.
+    - `words`: An iterable of words to filter.
     - `word_length`: The exact length required for a word.
     - `specific_positions`: A dictionary mapping positions (0-indexed)
                             to letters that must appear at those positions.
@@ -62,9 +64,8 @@ def filter_words(
 
 def main() -> None:
     """Create the main execution flow."""
-    DICTIONARY_WORDS = load_words(
-        "/Users/elij/zypy/cheats/english-words/words_alpha.txt"
-    )
+    dataset_path = Path(__file__).resolve().parent / "english-words" / "words_alpha.txt"
+    DICTIONARY_WORDS = load_words(dataset_path)
     candidates = filter_words(
         DICTIONARY_WORDS,
         word_length=WORD_LENGTH,
