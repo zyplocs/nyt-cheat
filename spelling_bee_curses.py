@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # spelling_bee_curses.py
-"""Light-weight Spelling-Bee TUI using the built-in `curses` module.
+"""Lightweight TUI to cheat on NYT Spelling Bee.
 
 Python 3.10+ is required because the key-dispatch loop relies on
 `match … case` (structural pattern matching).
