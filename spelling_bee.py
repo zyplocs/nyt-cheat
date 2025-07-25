@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Script to cheat on NYT Spelling Bee."""
 import argparse
 import sys
 from pathlib import Path
