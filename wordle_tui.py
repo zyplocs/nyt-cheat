@@ -38,8 +38,65 @@ DEFAULT_INCLUDE = ""
 DEFAULT_EXCLUDE = ""
 
 HELP_BAR = (
-    "Length   Pattern   Include   Exclude    [Tab] cycle  [Space] edit  [Enter] run  [q] quit"
+    "[Tab] cycle  [Space] edit  [Enter] run  [q] quit"
 )
+
+# Color pair IDs
+class PAIR:
+    ERROR  = 1
+    HELP   = 2
+    FOCUS  = 3   # used for both focus and editing accent
+    HEADER = 4
+
+def init_colors() -> dict[str, int]:
+    """Initialize color pairs and return a palette of attributes."""
+    # Base attrs that work on monochrome terminals
+    palette: dict[str, int] = {
+        "normal":   curses.A_NORMAL,
+        "bold":     curses.A_BOLD,
+        "underline":curses.A_UNDERLINE,
+        "reverse":  curses.A_REVERSE,
+
+        # Semantic roles (color is added if available)
+        "error":    curses.A_BOLD,
+        "help":     curses.A_BOLD,
+        "focus":    curses.A_UNDERLINE,
+        "editing":  curses.A_REVERSE | curses.A_BOLD,
+        "header":   curses.A_BOLD,
+    }
+
+    # No color support: return monochrome palette
+    if not curses.has_colors():
+        return palette
+
+    try:
+        curses.start_color()
+
+        # Try default-bg; if that fails, use black
+        bg = -1
+        try:
+            curses.use_default_colors()
+        except curses.error:
+            bg = curses.COLOR_BLACK
+
+        # Only use a few pairs; works across low-color terminals
+        curses.init_pair(PAIR.ERROR,  curses.COLOR_RED,    bg)
+        curses.init_pair(PAIR.HELP,   curses.COLOR_CYAN,   bg)
+        curses.init_pair(PAIR.FOCUS,  curses.COLOR_YELLOW, bg)
+        curses.init_pair(PAIR.HEADER, curses.COLOR_GREEN,  bg)
+
+        # Bind color to semantic roles
+        palette["error"]   |= curses.color_pair(PAIR.ERROR)
+        palette["help"]    |= curses.color_pair(PAIR.HELP)
+        palette["focus"]   |= curses.color_pair(PAIR.FOCUS)
+        palette["editing"] |= curses.color_pair(PAIR.FOCUS)   # same accent as focus
+        palette["header"]  |= curses.color_pair(PAIR.HEADER)
+
+    except curses.error:
+        # Fall back to monochrome palette
+        pass
+
+    return palette
 
 # Key codes grouped in a dotted namespace for pattern matching
 class KEYS:
@@ -90,23 +147,24 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[int, str, str
 class Field:
     """Robust text-input field with validation and display logic."""
 
-    def __init__(self, label: str, x: int, width: int, value: str = "", field_type: str = "text") -> None:
+    def __init__(self, label: str, x: int, width: int, value: str = "", field_type: str = "text", palette: dict[str, int] | None = None) -> None:
         self.label = label
         self.x = x  # column position on the screen
         self.width = width  # max chars displayed (incl. space for cursor)
         self.value = value
         self.field_type = field_type  # "length", "pattern", "include", "exclude"
+        self.palette = palette or {"normal": curses.A_NORMAL, "focus": curses.A_UNDERLINE, "editing": curses.A_REVERSE | curses.A_BOLD}
 
     def render(self, win: "curses._CursesWindow", y: int, focused: bool, editing: bool = False) -> None:
         """Render the field with appropriate highlighting."""
         try:
             # Different highlighting for focused vs editing states
             if editing:
-                attr = curses.A_REVERSE | curses.A_BOLD
+                attr = self.palette["editing"]
             elif focused:
-                attr = curses.A_UNDERLINE
+                attr = self.palette["focus"]
             else:
-                attr = curses.A_NORMAL
+                attr = self.palette["normal"]
                 
             # Safely add label
             max_y, max_x = win.getmaxyx()
@@ -114,16 +172,20 @@ class Field:
                 win.addstr(y, min(self.x, max_x - 1), self.label[:max_x - self.x - 1])
             
             # Display value with cursor if editing
-            display_value = self.value.ljust(self.width - 1)[: self.width - 1]
+            # Ensure cursor fits within width allocation
+            max_value_len = self.width - 2 if editing else self.width - 1
+            display_value = self.value[:max_value_len].ljust(max_value_len)
             if editing:
                 display_value += "█"  # Show cursor when editing
             
             field_x = self.x + len(self.label) + 1
             if y < max_y and field_x < max_x:
+                # Ensure we don't overflow the field bounds
+                safe_display = display_value[:min(len(display_value), max_x - field_x)]
                 win.addstr(
                     y,
-                    min(field_x, max_x - 1),
-                    display_value[:max_x - field_x],
+                    field_x,
+                    safe_display,
                     attr,
                 )
         except curses.error:
@@ -132,7 +194,8 @@ class Field:
 
     def add_char(self, char: str) -> bool:
         """Add character to field value with validation. Returns True if added successfully."""
-        if len(self.value) >= self.width - 1:
+        # Reserve space for cursor when editing
+        if len(self.value) >= self.width - 2:
             return False
             
         # Validation based on field type
@@ -205,6 +268,9 @@ def main(stdscr: "curses._CursesWindow") -> None:
         stdscr.getch()
         return
 
+    # Initialize colors (safe no-op on monochrome terminals)
+    palette = init_colors()
+
     # Get initial parameters
     try:
         length_default, pattern_default, include_default, exclude_default = prompt_initial_params(stdscr)
@@ -217,10 +283,10 @@ def main(stdscr: "curses._CursesWindow") -> None:
 
     # Build the editable fields with proper spacing
     fields: list[Field] = [
-        Field("Length:", 0, 4, str(length_default), "length"),
-        Field("Pattern:", 12, 10, pattern_default, "pattern"),
-        Field("Include:", 28, 8, include_default, "include"),
-        Field("Exclude:", 42, 8, exclude_default, "exclude"),
+        Field("Length:", 0, 5, str(length_default), "length", palette),
+        Field("Pattern:", 13, 12, pattern_default, "pattern", palette),
+        Field("Include:", 31, 10, include_default, "include", palette),
+        Field("Exclude:", 47, 15, exclude_default, "exclude", palette),
     ]
 
     active = 0  # index of the currently-focused field
@@ -234,14 +300,17 @@ def main(stdscr: "curses._CursesWindow") -> None:
         try:
             stdscr.erase()
             max_y, max_x = stdscr.getmaxyx()
-            
+
             # Help bar
             help_text = HELP_BAR
-            if editing:
-                help_text += "  [EDITING - Esc to exit]"
-            if max_x > len(help_text):
-                stdscr.addstr(0, 0, help_text, curses.A_BOLD)
-            
+            if max_x > 0:
+                stdscr.addstr(0, 0, help_text[:max_x], palette["help"])
+
+                if editing:
+                    badge = "  [EDITING - Esc to exit]"
+                    if len(help_text) + len(badge) < max_x:
+                        stdscr.addstr(0, len(help_text), badge, palette["editing"])
+
             # Input fields
             if max_y > 2:
                 for idx, f in enumerate(fields):
@@ -249,29 +318,29 @@ def main(stdscr: "curses._CursesWindow") -> None:
 
             # Error message if present
             if error_msg and max_y > 3:
-                stdscr.addstr(3, 0, f"Error: {error_msg}", curses.A_BOLD | curses.color_pair(1) if curses.has_colors() else curses.A_BOLD)
+                stdscr.addstr(3, 0, f"Error: {error_msg}", palette["error"])
 
             # Results with scrolling
             start_row = 5 if error_msg else 4
             available_rows = max(0, max_y - start_row - 1)
-            
+
             if results and available_rows > 0:
                 # Results header
                 header = f"{len(results)} candidates found"
                 if max_y > start_row - 1:
-                    stdscr.addstr(start_row - 1, 0, header, curses.A_BOLD)
-                
+                    stdscr.addstr(start_row - 1, 0, header, palette["header"])
+
                 # Display results with scrolling
                 for i in range(min(available_rows, len(results) - offset)):
                     if start_row + i < max_y and offset + i < len(results):
                         word = results[offset + i][:max_x - 3]  # Truncate if needed
                         stdscr.addstr(start_row + i, 2, word)
-                
+
                 # Scroll indicators
                 if offset > 0 and max_y > start_row:
-                    stdscr.addstr(start_row, max_x - 5, "↑", curses.A_BOLD)
+                    stdscr.addstr(start_row, max_x - 5, "↑", palette["bold"])
                 if offset + available_rows < len(results) and max_y > start_row + available_rows - 1:
-                    stdscr.addstr(start_row + available_rows - 1, max_x - 5, "↓", curses.A_BOLD)
+                    stdscr.addstr(start_row + available_rows - 1, max_x - 5, "↓", palette["bold"])
 
             stdscr.refresh()
         except curses.error:
@@ -334,14 +403,6 @@ def main(stdscr: "curses._CursesWindow") -> None:
             error_msg = f"Filter error: {str(e)}"
             results = []
             offset = 0
-
-    # Initialize colors if available
-    if curses.has_colors():
-        try:
-            curses.start_color()
-            curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
-        except curses.error:
-            pass
 
     # Initial run & draw
     run_filter()
