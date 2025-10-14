@@ -117,5 +117,5 @@ cython_debug/
 .#wordle.py
 .DS_Store
 
-# Prune
-prune/
+# Prune data module
+prune/data/
