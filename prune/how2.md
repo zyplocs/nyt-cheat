@@ -1,6 +1,6 @@
-# How to Programmatically Prune Invalid Dictionary Words (Automated)
+# How to Programmatically Prune Invalid Dictionary Words
 
-This workflow uses NYT Spelling Bee outputs as an empirical validator for the submodule dictionary (`english-words/words_alpha.txt`). It automates deriving “fake” words and safely updating the dictionary.
+This workflow uses NYT Spelling Bee answers as an empirical validator for the submodule dictionary (`english-words/words_alpha.txt`). It automates deriving “fake” words and safely updating the dictionary.
 
 ## Prerequisites
 
