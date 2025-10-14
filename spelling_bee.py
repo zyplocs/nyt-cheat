@@ -3,9 +3,9 @@ import argparse
 import sys
 from pathlib import Path
 
-# -----------------------------------
-# CLI helpers
-# -----------------------------------
+# -------------
+#  CLI helpers
+# -------------
 
 def _parse_args() -> argparse.Namespace:
     """Return command-line arguments parsed with `argparse`."""
@@ -52,9 +52,9 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-# -----------------------------------
-# Core helpers
-# -----------------------------------
+# --------------
+#  Core helpers
+# --------------
 
 def load_words(dict_path: Path) -> set[str]:
     """Read the word list from `dict_path` and return a set of lowercase words."""
@@ -62,8 +62,8 @@ def load_words(dict_path: Path) -> set[str]:
     try:
         with dict_path.open("r", encoding="utf-8") as f:
             return {line.strip().lower() for line in f if line.strip()}
-    except FileNotFoundError as exc:
-        sys.exit(f"Dictionary file not found: {dict_path}\n{exc}")
+    except FileNotFoundError as e:
+        sys.exit(f"Dictionary file not found: {dict_path}\n{e}")
 
 
 def filter_words(
@@ -98,9 +98,9 @@ def filter_words(
     return sorted(filtered_words)
 
 
-# -----------------------------------
-# Main script logic
-# -----------------------------------
+# -------------------
+#  Main script logic
+# -------------------
 
 def main() -> None:  # noqa: D401
     """CLI entry-point."""
@@ -122,20 +122,17 @@ def main() -> None:  # noqa: D401
         args.min_length,
     )
 
-    # -----------------------------------
     # Emit results
-    # -----------------------------------
-
     header = f"{len(valid_words)} words found:"
     word_lines = "\n".join(valid_words)
 
     if args.output:
         try:
             args.output.write_text(word_lines + "\n", encoding="utf-8")
-        except Exception as exc:  # broad but prints nice message instead of crashing
-            sys.exit(f"Could not write output file {args.output}: {exc}")
+        except Exception as e:
+            sys.exit(f"Could not write output file {args.output}: {e}")
 
-    # Always print to stdout so shell redirection still works
+    # Always print to stdout
     print(header)
     print(word_lines)
 
