@@ -1,4 +1,4 @@
-"""Text-based User Interface (TUI) helper for NYT Wordle.
+"""TUI helper for NYT Wordle.
 
 Runs in the terminal using Python's built-in ``curses`` module.  It
 prompts for constraints and then prints matching candidate words.

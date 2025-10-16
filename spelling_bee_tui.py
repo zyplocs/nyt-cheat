@@ -69,6 +69,49 @@ HELP_BAR = (
     "Letters ({})   Required   MinLen    [Tab] cycle  [Space] edit  [Enter] run  [q] quit"
 )
 
+class PAIR:
+    ERROR  = 1
+    HELP   = 2
+    FOCUS  = 3
+    HEADER = 4
+
+def init_colors() -> dict[str, int]:
+    palette: dict[str, int] = {
+        "normal":    curses.A_NORMAL,
+        "bold":      curses.A_BOLD,
+        "underline": curses.A_UNDERLINE,
+        "reverse":   curses.A_REVERSE,
+
+        "error":     curses.A_BOLD,
+        "help":      curses.A_BOLD,
+        "focus":     curses.A_UNDERLINE,
+        "editing":   curses.A_REVERSE | curses.A_BOLD,
+        "header":    curses.A_BOLD,
+    }
+    if not curses.has_colors():
+        return palette
+    try:
+        curses.start_color()
+        bg = -1
+        try:
+            curses.use_default_colors()
+        except curses.error:
+            bg = curses.COLOR_BLACK
+
+        curses.init_pair(PAIR.ERROR,  curses.COLOR_RED,     bg)
+        curses.init_pair(PAIR.HELP,   curses.COLOR_CYAN,    bg)
+        curses.init_pair(PAIR.FOCUS,  curses.COLOR_MAGENTA, bg)
+        curses.init_pair(PAIR.HEADER, curses.COLOR_GREEN,   bg)
+
+        palette["error"]   |= curses.color_pair(PAIR.ERROR)
+        palette["help"]    |= curses.color_pair(PAIR.HELP)
+        palette["focus"]   |= curses.color_pair(PAIR.FOCUS)
+        palette["editing"] |= curses.color_pair(PAIR.FOCUS)
+        palette["header"]  |= curses.color_pair(PAIR.HEADER)
+    except curses.error:
+        pass
+    return palette
+
 # Key codes grouped in a *dotted* namespace so that pattern-matching treats
 # them as *value* patterns (``KEYS.Q``) rather than capture patterns.
 # See PEP 636 – bare names are captures, dotted names are constants.
@@ -115,21 +158,21 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[str, str, int
 class Field:
     """Tiny helper to store text-input field metadata."""
 
-    def __init__(self, label: str, x: int, width: int, value: str = "", field_type: str = "text") -> None:
+    def __init__(self, label: str, x: int, width: int, value: str = "", field_type: str = "text", palette: dict[str, int] | None = None) -> None:
         self.label = label
         self.x = x  # column position on the screen
         self.width = width  # max chars displayed (incl. space for cursor)
         self.value = value
         self.field_type = field_type  # "letters", "required", or "minlen"
+        self.palette = palette or {"normal": curses.A_NORMAL, "focus": curses.A_UNDERLINE, "editing": curses.A_REVERSE | curses.A_BOLD}
 
     def render(self, win: "curses._CursesWindow", y: int, focused: bool, editing: bool = False) -> None:  # type: ignore[name-defined]
-        # Different highlighting for focused vs editing states
         if editing:
-            attr = curses.A_REVERSE | curses.A_BOLD
+            attr = self.palette["editing"]
         elif focused:
-            attr = curses.A_UNDERLINE
+            attr = self.palette["focus"]
         else:
-            attr = curses.A_NORMAL
+            attr = self.palette["normal"]
             
         win.addstr(y, self.x, self.label)
         display_value = self.value.ljust(self.width - 1)[: self.width - 1]
@@ -183,15 +226,16 @@ def main(stdscr: "curses._CursesWindow") -> None:  # type: ignore[name-defined]
     stdscr.keypad(True)       # decode function keys like PageUp
     curses.mousemask(0)       # ignore mouse/track-pad scroll events
     stdscr.clear()
+    palette = init_colors()
 
     # Prompt user for startup values
     letters_default, required_default, min_len_default = prompt_initial_params(stdscr)
 
     # Build the three editable fields
     fields: list[Field] = [
-        Field("Letters:", 0, 10, letters_default, "letters"),
-        Field("Required:", 20, 2, required_default, "required"),
-        Field("MinLen:", 35, 3, str(min_len_default), "minlen"),
+        Field("Letters:", 0, 10, letters_default, "letters", palette),
+        Field("Required:", 20, 2, required_default, "required", palette),
+        Field("MinLen:", 35, 3, str(min_len_default), "minlen", palette),
     ]
 
     active = 0  # index of the currently-focused field
@@ -200,37 +244,50 @@ def main(stdscr: "curses._CursesWindow") -> None:  # type: ignore[name-defined]
     offset = 0  # vertical scroll offset for results list
 
     def draw() -> None:
-        stdscr.erase()
-        # Update help bar to show edit status
-        help_text = HELP_BAR.format(len(fields[0].value))
-        if editing:
-            help_text += "  [EDITING - Esc to exit]"
-        stdscr.addstr(0, 0, help_text, curses.A_BOLD)
+        try:
+            stdscr.erase()
+            h, w = stdscr.getmaxyx()
 
-        # Input line
-        for idx, f in enumerate(fields):
-            f.render(stdscr, 2, focused=(idx == active), editing=(idx == active and editing))
+            # Help bar
+            help_text = HELP_BAR.format(len(fields[0].value))
+            if w > 0:
+                stdscr.addstr(0, 0, help_text[:w], palette["help"])
+                if editing:
+                    badge = "  [EDITING - Esc to exit]"
+                    if len(help_text) + len(badge) < w:
+                        stdscr.addstr(0, len(help_text), badge, palette["editing"])
 
-        # Results
-        h, w = stdscr.getmaxyx()
-        start_row = 4
-        available_rows = h - 5  # 0-based index 4 is first result line
-        for i in range(available_rows):
-            if offset + i >= len(results):
-                break
-            word = results[offset + i]
-            attr = (getattr(curses, "A_ITALIC", curses.A_UNDERLINE)
-                    if is_pangram(word, set(fields[0].value.lower()))
-                    else curses.A_NORMAL)
-            stdscr.addstr(start_row + i, 2, word, attr)
+            # Input line
+            for idx, f in enumerate(fields):
+                f.render(stdscr, 2, focused=(idx == active), editing=(idx == active and editing))
 
-        if available_rows > 0 and w > 5:
-            if offset > 0 and h > start_row:
-                stdscr.addstr(start_row, w - 5, "↑", curses.A_BOLD)
-            if offset + available_rows < len(results) and h > start_row + available_rows - 1:
-                stdscr.addstr(start_row + available_rows - 1, w - 5, "↓", curses.A_BOLD)
+            # Results
+            start_row = 4
+            available_rows = h - 5  # 0-based index 4 is first result line
 
-        stdscr.refresh()
+            if results:
+                header = f"{len(results)} candidates found"
+                if h > start_row - 1:
+                    stdscr.addstr(start_row - 1, 0, header, palette["header"])
+
+            for i in range(available_rows):
+                if offset + i >= len(results):
+                    break
+                word = results[offset + i]
+                attr = (getattr(curses, "A_ITALIC", curses.A_UNDERLINE)
+                        if is_pangram(word, set(fields[0].value.lower()))
+                        else curses.A_NORMAL)
+                stdscr.addstr(start_row + i, 2, word, attr)
+
+            if available_rows > 0 and w > 5:
+                if offset > 0 and h > start_row:
+                    stdscr.addstr(start_row, w - 5, "↑", palette["bold"])
+                if offset + available_rows < len(results) and h > start_row + available_rows - 1:
+                    stdscr.addstr(start_row + available_rows - 1, w - 5, "↓", palette["bold"])
+
+            stdscr.refresh()
+        except curses.error:
+            pass
 
     def run_filter() -> None:
         nonlocal results, offset
