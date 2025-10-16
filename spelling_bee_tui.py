@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # spelling_bee_curses.py
-"""Lightweight TUI to cheat on NYT Spelling Bee.
+"""TUI helper for NYT Spelling Bee
 
 Python 3.10+ is required because the key-dispatch loop relies on
 `match … case` (structural pattern matching).
@@ -212,7 +212,8 @@ def main(stdscr: "curses._CursesWindow") -> None:  # type: ignore[name-defined]
             f.render(stdscr, 2, focused=(idx == active), editing=(idx == active and editing))
 
         # Results
-        h, _ = stdscr.getmaxyx()
+        h, w = stdscr.getmaxyx()
+        start_row = 4
         available_rows = h - 5  # 0-based index 4 is first result line
         for i in range(available_rows):
             if offset + i >= len(results):
@@ -221,7 +222,13 @@ def main(stdscr: "curses._CursesWindow") -> None:  # type: ignore[name-defined]
             attr = (getattr(curses, "A_ITALIC", curses.A_UNDERLINE)
                     if is_pangram(word, set(fields[0].value.lower()))
                     else curses.A_NORMAL)
-            stdscr.addstr(4 + i, 2, word, attr)
+            stdscr.addstr(start_row + i, 2, word, attr)
+
+        if available_rows > 0 and w > 5:
+            if offset > 0 and h > start_row:
+                stdscr.addstr(start_row, w - 5, "↑", curses.A_BOLD)
+            if offset + available_rows < len(results) and h > start_row + available_rows - 1:
+                stdscr.addstr(start_row + available_rows - 1, w - 5, "↓", curses.A_BOLD)
 
         stdscr.refresh()
 
