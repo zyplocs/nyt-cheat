@@ -56,6 +56,8 @@ def filter_words(
         if len(w) >= min_len and required in w and set(w) <= allowed
     )
 
+def is_pangram(word: str, allowed: set[str]) -> bool:
+    return set(word) == allowed
 
 WORDS: set[str] = load_words()
 
@@ -215,7 +217,11 @@ def main(stdscr: "curses._CursesWindow") -> None:  # type: ignore[name-defined]
         for i in range(available_rows):
             if offset + i >= len(results):
                 break
-            stdscr.addstr(4 + i, 2, results[offset + i])
+            word = results[offset + i]
+            attr = (getattr(curses, "A_ITALIC", curses.A_UNDERLINE)
+                    if is_pangram(word, set(fields[0].value.lower()))
+                    else curses.A_NORMAL)
+            stdscr.addstr(4 + i, 2, word, attr)
 
         stdscr.refresh()
 
