@@ -27,7 +27,7 @@ import curses
 from pathlib import Path
 from typing import Dict, Set
 
-import wordle  # local module with load_words / filter_words
+import wordle
 
 DATASET_PATH = Path(__file__).resolve().parent / "english-words" / "words_alpha.txt"
 
@@ -82,7 +82,7 @@ def init_colors() -> dict[str, int]:
         # Only use a few pairs; works across low-color terminals
         curses.init_pair(PAIR.ERROR,  curses.COLOR_RED,    bg)
         curses.init_pair(PAIR.HELP,   curses.COLOR_CYAN,   bg)
-        curses.init_pair(PAIR.FOCUS,  curses.COLOR_YELLOW, bg)
+        curses.init_pair(PAIR.FOCUS,  curses.COLOR_MAGENTA, bg)
         curses.init_pair(PAIR.HEADER, curses.COLOR_GREEN,  bg)
 
         # Bind color to semantic roles
