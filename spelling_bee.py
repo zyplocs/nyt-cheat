@@ -1,12 +1,9 @@
-#!/usr/bin/env python3
+"""Script to cheat on NYT Spelling Bee."""
 import argparse
 import sys
 from pathlib import Path
 
-# -------------
-#  CLI helpers
-# -------------
-
+# argparse script
 def _parse_args() -> argparse.Namespace:
     """Return command-line arguments parsed with `argparse`."""
 
@@ -52,18 +49,15 @@ def _parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
-# --------------
-#  Core helpers
-# --------------
-
+# Core funcs
 def load_words(dict_path: Path) -> set[str]:
     """Read the word list from `dict_path` and return a set of lowercase words."""
 
     try:
         with dict_path.open("r", encoding="utf-8") as f:
             return {line.strip().lower() for line in f if line.strip()}
-    except FileNotFoundError as e:
-        sys.exit(f"Dictionary file not found: {dict_path}\n{e}")
+    except FileNotFoundError as exc:
+        sys.exit(f"Dictionary file not found: {dict_path}\n{exc}")
 
 
 def filter_words(
@@ -75,16 +69,21 @@ def filter_words(
     """
     Filter words based on specified criteria.
 
-    Arguments
-    ---------
-    word_list: A set of words to filter.
-    allowed_letters: A set of allowed letters; each word must only contain these.
-    required_letter: A letter that must appear in every word.
-    min_length: The minimum length a word must have.
+    ---
+    ### Arguments
+    `word_list`
+        A set of words to filter.
+    `allowed_letters`
+        A set of allowed letters; each word must only contain these.
+    `required_letter`
+        A letter that must appear in every word.
+    `min_length`
+        The minimum length a word must have.
 
-    Returns
-    -------
-    filtered_words: A sorted list of words that meet the criteria.
+    ---
+    ### Returns
+    `filtered_words`
+        A sorted list of words that meet the criteria.
     """
     filtered_words = set()
     for word in word_list:
@@ -98,10 +97,7 @@ def filter_words(
     return sorted(filtered_words)
 
 
-# -------------------
-#  Main script logic
-# -------------------
-
+# Main logic
 def main() -> None:  # noqa: D401
     """CLI entry-point."""
 
