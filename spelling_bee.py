@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Script to cheat on NYT Spelling Bee."""
 import argparse
 import sys
@@ -126,10 +125,10 @@ def main() -> None:  # noqa: D401
     if args.output:
         try:
             args.output.write_text(word_lines + "\n", encoding="utf-8")
-        except Exception as exc:  # broad but prints nice message instead of crashing
-            sys.exit(f"Could not write output file {args.output}: {exc}")
+        except Exception as e:
+            sys.exit(f"Could not write output file {args.output}: {e}")
 
-    # Always print to stdout so shell redirection still works
+    # Always print to stdout
     print(header)
     print(word_lines)
 

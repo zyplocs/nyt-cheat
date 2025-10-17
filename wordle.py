@@ -54,6 +54,11 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+# Define search conditions
+WORD_LENGTH = 5
+LETTERS_IN_SPECIFIC_POSITIONS = {1: "n", 3: "o"}
+LETTERS_TO_INCLUDE = {"i"}
+LETTERS_NOT_ALLOWED = {"e", "r", "t", "u", "a", "s", "l", "c"}
 
 # Core funcs
 def load_words(filepath: str | Path) -> set[str]:
