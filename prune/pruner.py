@@ -8,7 +8,7 @@ import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Set, Tuple, Optional, List
+from typing import Iterable, Set, Optional, List
 
 
 PRUNE_DIR = Path(__file__).resolve().parent
@@ -99,27 +99,75 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
     )
     # Inputs (files or date)
-    parser.add_argument("--date", help="6-digit date token, e.g. 080925")
-    parser.add_argument("--data-dir", default=str(PRUNE_DIR), help="Directory containing answers_*.txt, fakes_*.txt, output_*.txt (default: prune/)" )
-    parser.add_argument("--bad", help="Path to fakes_*.txt")
-    parser.add_argument("--true", help="Path to answers_*.txt")
-    parser.add_argument("--output", help="Path to output_*.txt; if provided with answers, fakes are computed in-memory")
+    parser.add_argument(
+        "--date", 
+        help="6-digit date token, e.g. 080925"
+    )
+    parser.add_argument(
+        "--data-dir", 
+        default=str(PRUNE_DIR), 
+        help="Directory containing answers_*.txt, fakes_*.txt, output_*.txt (default: prune/)" 
+    )
+    parser.add_argument(
+        "--bad", 
+        help="Path to fakes_*.txt"
+    )
+    parser.add_argument(
+        "--true", 
+        help="Path to answers_*.txt"
+    )
+    parser.add_argument(
+        "--output", 
+        help="Path to output_*.txt; if provided with answers, fakes are computed in-memory"
+    )
 
     # Inline answers
     parser.add_argument("--answers-str", help="Answers provided inline (JSON array, comma- or whitespace-separated)")
     parser.add_argument("--answers-stdin", action="store_true", help="Read answers from STDIN (one per line or pasted blob)")
 
     # Behavior and safety
-    parser.add_argument("--dict", dest="dict_path", default=str(DEFAULT_DICT), help=f"Dictionary path (default: {DEFAULT_DICT})")
-    parser.add_argument("--apply", action="store_true", help="Apply changes (otherwise dry-run)")
-    parser.add_argument("--yes", "-y", action="store_true", help="Assume yes to prompts when applying")
-    parser.add_argument("--no-add", action="store_true", help="Do not add missing true words to dictionary")
-    parser.add_argument("--no-remove", action="store_true", help="Do not remove bad/fake words from dictionary")
-    parser.add_argument("--conservative", action="store_true", help="Only remove words that are also NOT in a system dictionary (safer)")
     parser.add_argument(
-        "--system-dict", default=str(DEFAULT_SYSTEM_DICT), help="System dictionary to cross-check (default: /usr/share/dict/words if present)"
+        "--dict", 
+        dest="dict_path", 
+        default=str(DEFAULT_DICT), 
+        help=f"Dictionary path (default: {DEFAULT_DICT})"
     )
-    parser.add_argument("--show", type=int, default=20, help="How many sample words to preview per category")
+    parser.add_argument(
+        "--apply", 
+        action="store_true", 
+        help="Apply changes (otherwise dry-run)"
+    )
+    parser.add_argument(
+        "--yes", "-y", 
+        action="store_true", 
+        help="Assume yes to prompts when applying"
+    )
+    parser.add_argument(
+        "--no-add", 
+        action="store_true", 
+        help="Do not add missing true words to dictionary"
+    )
+    parser.add_argument(
+        "--no-remove", 
+        action="store_true", 
+        help="Do not remove bad/fake words from dictionary"
+    )
+    parser.add_argument(
+        "--conservative", 
+        action="store_true", 
+        help="Only remove words that are also NOT in a system dictionary (safer)"
+    )
+    parser.add_argument(
+        "--system-dict", 
+        default=str(DEFAULT_SYSTEM_DICT), 
+        help="System dictionary to cross-check (default: /usr/share/dict/words if present)"
+    )
+    parser.add_argument(
+        "--show", 
+        type=int, 
+        default=20, 
+        help="How many sample words to preview per category"
+    )
 
     args = parser.parse_args(argv)
 
@@ -156,6 +204,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.output:
         output_path = Path(args.output).resolve()
         output_words = read_words(output_path)
+        output_words = {w for w in output_words if re.fullmatch(r"[a-z]+", w)}
         if answers_words:
             bad_words = output_words - answers_words
             bad_source = f"computed from {output_path} – {len(bad_words)}"
