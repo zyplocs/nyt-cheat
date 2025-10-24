@@ -25,9 +25,6 @@ from __future__ import annotations
 import curses
 from pathlib import Path
 
-#####################################################################
-#       Core word-filtering logic (identical to CLI version)        #
-#####################################################################
 
 ALLOWED_LETTERS_DEFAULT: set[str] = {"d", "i", "l", "t", "m", "a", "n"}
 REQUIRED_LETTER_DEFAULT: str = "l"
@@ -61,10 +58,7 @@ def is_pangram(word: str, allowed: set[str]) -> bool:
 
 WORDS: set[str] = load_words()
 
-###############################################
-#                 curses UI                   #
-###############################################
-
+# Begin curses UI
 HELP_BAR = (
     "Letters ({})   Required   MinLen    [Tab] cycle  [Space] edit  [Enter] run  [q] quit"
 )
@@ -112,10 +106,7 @@ def init_colors() -> dict[str, int]:
         pass
     return palette
 
-# Key codes grouped in a *dotted* namespace so that pattern-matching treats
-# them as *value* patterns (``KEYS.Q``) rather than capture patterns.
-# See PEP 636 – bare names are captures, dotted names are constants.
-
+# Key codes grouped in a dotted namespace for pattern matching
 class KEYS:
     Q = ord("q")
     K = ord("k")
