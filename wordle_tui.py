@@ -31,22 +31,23 @@ import wordle
 
 DATASET_PATH = Path(__file__).resolve().parent / "english-words" / "words_alpha.txt"
 
-# Default values
 DEFAULT_LENGTH = 5
 DEFAULT_PATTERN = ""
 DEFAULT_INCLUDE = ""
 DEFAULT_EXCLUDE = ""
 
+# Begin curses UI
 HELP_BAR = (
     "[Tab] cycle  [Space] edit  [Enter] run  [q] quit"
 )
 
-# Color pair IDs
+
 class PAIR:
     ERROR  = 1
     HELP   = 2
     FOCUS  = 3   # used for both focus and editing accent
     HEADER = 4
+
 
 def init_colors() -> dict[str, int]:
     """Initialize color pairs and return a palette of attributes."""
