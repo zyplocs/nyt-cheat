@@ -60,7 +60,7 @@ WORDS: set[str] = load_words()
 
 # Begin curses UI
 HELP_BAR = (
-    "Letters ({})   Required   MinLen    [Tab] cycle  [Space] edit  [Enter] run  [q] quit"
+    "Letters ({letters})  Required ({required})  MinLen ({min_len})  ~  [Tab] cycle  [Space] edit  [Enter] run  [q] quit"
 )
 
 class PAIR:
@@ -157,24 +157,30 @@ class Field:
         self.field_type = field_type  # "letters", "required", or "minlen"
         self.palette = palette or {"normal": curses.A_NORMAL, "focus": curses.A_UNDERLINE, "editing": curses.A_REVERSE | curses.A_BOLD}
 
-    def render(self, win: "curses._CursesWindow", y: int, focused: bool, editing: bool = False) -> None:  # type: ignore[name-defined]
-        if editing:
-            attr = self.palette["editing"]
-        elif focused:
-            attr = self.palette["focus"]
-        else:
-            attr = self.palette["normal"]
+    def render(self, win: "curses._CursesWindow", y: int, focused: bool, editing: bool = False) -> None:
+        """Render the field with appropriate highlighting."""
+        try:
+            attr = (
+                self.palette["editing"] if editing
+                else self.palette["focus"] if focused
+                else self.palette["normal"]
+            )
+
+            max_y, max_x = win.getmaxyx()
+            if y < max_y and self.x < max_x:
+                win.addstr(y, min(self.x, max_x - 1), self.label[: max_x - self.x - 1])
+
+            max_value_len = max(1, self.width - (2 if editing else 1))
+            display_value = self.value[:max_value_len].ljust(max_value_len)
+            if editing:
+                display_value += "█"
             
-        win.addstr(y, self.x, self.label)
-        display_value = self.value.ljust(self.width - 1)[: self.width - 1]
-        if editing:
-            display_value += "█"  # Show cursor when editing
-        win.addstr(
-            y,
-            self.x + len(self.label) + 1,
-            display_value,
-            attr,
-        )
+            field_x = self.x + len(self.label) + 1
+            if y < max_y and field_x < max_x:
+                safe_display = display_value[: max(0, max_x - field_x)]
+                win.addstr(y, field_x, safe_display, attr)
+        except curses.error:
+            pass
 
     def add_char(self, char: str) -> bool:
         """Add character to field value with validation. Returns True if added successfully."""
@@ -240,7 +246,11 @@ def main(stdscr: "curses._CursesWindow") -> None:  # type: ignore[name-defined]
             h, w = stdscr.getmaxyx()
 
             # Help bar
-            help_text = HELP_BAR.format(len(fields[0].value))
+            help_text = HELP_BAR.format(
+                letters=len(fields[0].value),
+                required=(fields[1].value or "-"),
+                min_len=(fields[2].value or "-"),
+            )
             if w > 0:
                 stdscr.addstr(0, 0, help_text[:w], palette["help"])
                 if editing:
