@@ -114,7 +114,7 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[int, str, str
     """
     curses.echo()
     stdscr.clear()
-    stdscr.addstr(0, 0, "NYT Wordle Solver Setup – press Enter to accept default values", curses.A_BOLD)
+    stdscr.addstr(0, 0, "NYT Wordle Cheater ~ press Enter to accept default values", curses.A_BOLD)
 
     stdscr.addstr(2, 0, f"Word length (default {DEFAULT_LENGTH}): ")
     length_in = stdscr.getstr().decode().strip()

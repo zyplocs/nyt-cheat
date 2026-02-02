@@ -121,7 +121,7 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[str, str, int
     """
     curses.echo()
     stdscr.clear()
-    stdscr.addstr(0, 0, "Spelling-Bee setup  – press Enter to accept default values", curses.A_BOLD)
+    stdscr.addstr(0, 0, "NYT Spelling-Bee Cheater ~ press Enter to accept default values", curses.A_BOLD)
 
     stdscr.addstr(2, 0, f"Letters (default {''.join(ALLOWED_LETTERS_DEFAULT)}): ")
     letters_in = stdscr.getstr().decode().strip().lower()
