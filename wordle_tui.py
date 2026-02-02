@@ -12,8 +12,8 @@ Controls
 --------
 • Tab         cycle between the editable fields.
 • Space       enter/exit text editing mode for the active field
-• ↑ / k       scroll results up (when not in edit mode)
-• ↓ / j       scroll results down (when not in edit mode)
+• ↑ / k       scroll up (when not in edit mode)
+• ↓ / j       scroll down (when not in edit mode)
 • Enter       run the filter with current params
 • Esc         exit text editing mode / quit program
 • q           quit program (when not in edit mode)
@@ -181,7 +181,7 @@ class Field:
             
             field_x = self.x + len(self.label) + 1
             if y < max_y and field_x < max_x:
-                # Ensure we don't overflow the field bounds
+                # Don't overflow the field bounds...
                 safe_display = display_value[:min(len(display_value), max_x - field_x)]
                 win.addstr(
                     y,

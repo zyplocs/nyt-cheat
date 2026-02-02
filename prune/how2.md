@@ -2,7 +2,7 @@
 
 This workflow uses NYT Spelling Bee answers as an empirical validator for the submodule dictionary (`english-words/words_alpha.txt`). It automates deriving “fake” words and safely updating the dictionary.
 
-## Prerequisites
+## Prerequisites          
 
 - **Dictionary** at `english-words/words_alpha.txt`
 - **Scripts executable**:
