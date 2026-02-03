@@ -2,7 +2,7 @@
 
 This workflow uses NYT Spelling Bee answers as an empirical validator for the submodule dictionary (`english-words/words_alpha.txt`). It automates deriving “fake” words and safely updating the dictionary.
 
-## Prerequisites          
+## Prerequisites
 
 - **Dictionary** at `english-words/words_alpha.txt`
 - **Scripts executable**:
@@ -10,6 +10,7 @@ This workflow uses NYT Spelling Bee answers as an empirical validator for the su
   ```bash
   chmod +x prune/derive_fakes.sh prune/batch_prune.sh
   ```
+
 - **Data directory**: store daily files in `prune/data/`
   - `answers_*.txt`, `output_*.txt`, `fakes_*.txt`
 - Optional: System dictionary at `/usr/share/dict/words` for conservative mode
