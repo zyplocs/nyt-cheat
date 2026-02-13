@@ -170,10 +170,10 @@ class Field:
             if y < max_y and self.x < max_x:
                 win.addstr(y, min(self.x, max_x - 1), self.label[: max_x - self.x - 1])
 
-            max_value_len = max(1, self.width - (2 if editing else 1))
+            max_value_len = max(1, self.width - 1)
             display_value = self.value[:max_value_len].ljust(max_value_len)
             if editing:
-                display_value += "█"
+                display_value += " "
             
             field_x = self.x + len(self.label) + 1
             if y < max_y and field_x < max_x:
