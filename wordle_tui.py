@@ -174,14 +174,14 @@ class Field:
             
             # Display value with cursor if editing
             # Ensure cursor fits within width allocation
-            max_value_len = self.width - 2 if editing else self.width - 1
+            max_value_len = max(1, self.width - 1)
             display_value = self.value[:max_value_len].ljust(max_value_len)
             if editing:
-                display_value += "█"  # Show cursor when editing
+                display_value += " "
             
             field_x = self.x + len(self.label) + 1
             if y < max_y and field_x < max_x:
-                # Don't overflow the field bounds...
+                # Don't overflow the field bounds…
                 safe_display = display_value[:min(len(display_value), max_x - field_x)]
                 win.addstr(
                     y,
@@ -195,8 +195,7 @@ class Field:
 
     def add_char(self, char: str) -> bool:
         """Add character to field value with validation. Returns True if added successfully."""
-        # Reserve space for cursor when editing
-        if len(self.value) >= self.width - 2:
+        if len(self.value) >= self.width - 1:
             return False
             
         # Validation based on field type
@@ -254,17 +253,21 @@ def main(stdscr: "curses._CursesWindow") -> None:
     # Configure curses settings safely
     try:
         curses.curs_set(1)
-        stdscr.keypad(True)       # interpret arrow & function keys correctly
-        stdscr.nodelay(False)     # blocking I/O is fine for this simple UI
-        curses.mousemask(0)       # ignore mouse/track-pad scroll events
+        stdscr.keypad(True)   # interpret arrow & function keys correctly
+        stdscr.nodelay(False)
+        curses.mousemask(0)   # ignore mouse/track-pad scroll events
         stdscr.clear()
     except curses.error:
-        pass  # Continue even if some curses features aren't available
+        pass  # Continue even if some features aren't available
 
     # Load words once at startup with error handling
     words = safe_load_words()
     if not words:
-        stdscr.addstr(0, 0, "Error: Could not load word list. Check that english-words/words_alpha.txt exists.", curses.A_BOLD)
+        stdscr.addstr(
+            0, 0,
+            "Error: Could not load word list. Check that english-words/words_alpha.txt exists.",
+            curses.A_BOLD
+        )
         stdscr.addstr(1, 0, "Press any key to exit.")
         stdscr.getch()
         return
@@ -291,7 +294,7 @@ def main(stdscr: "curses._CursesWindow") -> None:
     ]
 
     active = 0  # index of the currently-focused field
-    editing = False  # whether we're in text editing mode
+    editing = False  # whether in text editing mode
     results: list[str] = []
     offset = 0  # vertical scroll offset for results list
     error_msg = ""  # error message to display
