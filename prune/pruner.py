@@ -100,24 +100,24 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     # Inputs (files or date)
     parser.add_argument(
-        "--date", 
+        "--date", "-d",
         help="6-digit date token, e.g. 080925"
     )
     parser.add_argument(
-        "--data-dir", 
+        "--data-dir", "-D",
         default=str(PRUNE_DIR), 
         help="Directory containing answers_*.txt, fakes_*.txt, output_*.txt (default: prune/)" 
     )
     parser.add_argument(
-        "--bad", 
+        "--fakes", "-f",
         help="Path to fakes_*.txt"
     )
     parser.add_argument(
-        "--true", 
+        "--answers", "-a",
         help="Path to answers_*.txt"
     )
     parser.add_argument(
-        "--output", 
+        "--output", "-o", 
         help="Path to output_*.txt; if provided with answers, fakes are computed in-memory"
     )
 
@@ -133,7 +133,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         help=f"Dictionary path (default: {DEFAULT_DICT})"
     )
     parser.add_argument(
-        "--apply", 
+        "--apply", "-A",
         action="store_true", 
         help="Apply changes (otherwise dry-run)"
     )
@@ -143,22 +143,22 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Assume yes to prompts when applying"
     )
     parser.add_argument(
-        "--no-add", 
+        "--no-add", "-n",
         action="store_true", 
         help="Do not add missing true words to dictionary"
     )
     parser.add_argument(
-        "--no-remove", 
+        "--no-remove", "-k",
         action="store_true", 
         help="Do not remove bad/fake words from dictionary"
     )
     parser.add_argument(
-        "--conservative", 
+        "--conservative", "-c",
         action="store_true", 
         help="Only remove words that are also NOT in a system dictionary (safer)"
     )
     parser.add_argument(
-        "--system-dict", 
+        "--system-dict", "-s",
         default=str(DEFAULT_SYSTEM_DICT), 
         help="System dictionary to cross-check (default: /usr/share/dict/words if present)"
     )
@@ -168,7 +168,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Create a timestamped backup of the dictionary before applying changes"
     )
     parser.add_argument(
-        "--show", 
+        "--show", "-S",
         type=int, 
         default=20, 
         help="How many sample words to preview per category"
