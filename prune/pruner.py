@@ -163,6 +163,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="System dictionary to cross-check (default: /usr/share/dict/words if present)"
     )
     parser.add_argument(
+        "--backup", "-B",
+        action="store_true",
+        help="Create a timestamped backup of the dictionary before applying changes"
+    )
+    parser.add_argument(
         "--show", 
         type=int, 
         default=20, 
@@ -207,7 +212,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         output_words = {w for w in output_words if re.fullmatch(r"[a-z]+", w)}
         if answers_words:
             bad_words = output_words - answers_words
-            bad_source = f"computed from {output_path} – {len(bad_words)}"
+            bad_source = f"computed from {output_path} - {len(bad_words)}"
     if not bad_words:
         if args.bad:
             bad_path = Path(args.bad).resolve()
@@ -303,12 +308,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("\nNo changes necessary. Dictionary already up-to-date with provided inputs.")
         return 0
 
-    # Backup then write atomically
-    backup = backup_file(dict_path)
+    # Backup if requested, then write atomically
+    if args.backup:
+        backup = backup_file(dict_path)
     write_words_atomic(dict_path, new_words)
 
     print("\nApplied changes:")
-    print(f"  Backup created at: {backup}")
+    if args.backup:
+        print(f"  Backup created at: {backup}")
     print(f"  Added    : {len(missing_words):,}")
     print(f"  Removed  : {len(to_remove):,}")
     print(f"  New size : {len(new_words):,}")
