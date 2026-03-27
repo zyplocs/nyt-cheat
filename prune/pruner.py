@@ -127,50 +127,57 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Behavior and safety
     parser.add_argument(
-        "--dict", 
-        dest="dict_path", 
+        "--dict",
+        dest="dict_path",
         default=str(DEFAULT_DICT), 
         help=f"Dictionary path (default: {DEFAULT_DICT})"
     )
     parser.add_argument(
-        "--apply", "-A",
+        "--apply", 
+        "-A",
         action="store_true", 
         help="Apply changes (otherwise dry-run)"
     )
     parser.add_argument(
-        "--yes", "-y", 
+        "--yes", 
+        "-y",
         action="store_true", 
         help="Assume yes to prompts when applying"
     )
     parser.add_argument(
-        "--no-add", "-n",
+        "--no-add",
+        "-n",
         action="store_true", 
         help="Do not add missing true words to dictionary"
     )
     parser.add_argument(
-        "--no-remove", "-k",
-        action="store_true", 
+        "--no-remove",
+        "-k",
+        action="store_true",
         help="Do not remove bad/fake words from dictionary"
     )
     parser.add_argument(
-        "--conservative", "-c",
-        action="store_true", 
+        "--conservative",
+        "-c",
+        action="store_true",
         help="Only remove words that are also NOT in a system dictionary (safer)"
     )
     parser.add_argument(
-        "--system-dict", "-s",
-        default=str(DEFAULT_SYSTEM_DICT), 
+        "--system-dict",
+        "-s",
+        default=str(DEFAULT_SYSTEM_DICT),
         help="System dictionary to cross-check (default: /usr/share/dict/words if present)"
     )
     parser.add_argument(
-        "--backup", "-B",
+        "--backup",
+        "-B",
         action="store_true",
         help="Create a timestamped backup of the dictionary before applying changes"
     )
     parser.add_argument(
         "--show", "-S",
-        type=int, 
-        default=20, 
+        type=int,
+        default=20,
         help="How many sample words to preview per category"
     )
 
