@@ -3,17 +3,17 @@ from pathlib import Path
 from typing import Iterable
 import argparse
 
-WORD_LENGTH = 5
-LETTERS_IN_SPECIFIC_POSITIONS = {0: "t", 1: "a", 4: "t"}
-LETTERS_TO_INCLUDE = set()
-LETTERS_NOT_ALLOWED = {"e", "r", "p", "s", "d", "h", "l", "c", "b"}
-
 # argparse script
 def _parse_args() -> argparse.Namespace:
     """Return command-line arguments parsed with `argparse`."""
 
+    default_dict = (
+        Path(__file__).resolve().parent
+        / "english-words" / "words_alpha.txt"
+    )
+
     parser = argparse.ArgumentParser(
-        description="Filter Wordle candidate words based on constraints."
+        description="Filter Wordle candidate words based on constraints"
     )
     parser.add_argument(
         "-l",
@@ -27,38 +27,32 @@ def _parse_args() -> argparse.Namespace:
         "--position",
         action="append",
         default=[],
-        metavar="INDEX:LETTER",
+        metavar="INDEX:LETTER", 
         help=(
             "Fix LETTER at 0-indexed INDEX (e.g., -p 0:t). "
-            "May be supplied multiple times."
+            "May be supplied multiple times"
         ),
     )
     parser.add_argument(
         "-i",
         "--include",
         default="",
-        help="Letters that must be present (e.g., 'ar').",
+        help="Letters that must be present (e.g., 'ar')",
     )
     parser.add_argument(
         "-x",
         "--exclude",
         default="",
-        help="Letters that must NOT be present (e.g., 'seb').",
+        help="Letters that must NOT be present (e.g., 'seb')",
     )
     parser.add_argument(
         "-d",
         "--dictionary",
         type=Path,
-        default=Path(__file__).resolve().parent / "english-words" / "words_alpha.txt",
-        help="Path to word list file.",
+        default=default_dict,
+        help=f"Path to word list file (default: {default_dict})",
     )
     return parser.parse_args()
-
-# Define search conditions
-WORD_LENGTH = 5
-LETTERS_IN_SPECIFIC_POSITIONS = {1: "n", 3: "o"}
-LETTERS_TO_INCLUDE = {"i"}
-LETTERS_NOT_ALLOWED = {"e", "r", "t", "u", "a", "s", "l", "c"}
 
 # Core funcs
 def load_words(filepath: str | Path) -> set[str]:
