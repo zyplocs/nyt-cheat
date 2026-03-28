@@ -8,8 +8,8 @@ def _parse_args() -> argparse.Namespace:
     """Return command-line arguments parsed with `argparse`."""
 
     default_dict = (
-        Path(__file__).parent
-        / "english-words/words_alpha.txt"
+        Path(__file__).resolve().parent
+        / "english-words" / "words_alpha.txt"
     )
 
     parser = argparse.ArgumentParser(
