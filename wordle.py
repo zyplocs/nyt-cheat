@@ -9,7 +9,7 @@ LETTERS_TO_INCLUDE = set()
 LETTERS_NOT_ALLOWED = {"e", "r", "p", "s", "d", "h", "l", "c", "b"}
 
 # argparse script
-def parse_args() -> argparse.Namespace:
+def _parse_args() -> argparse.Namespace:
     """Return command-line arguments parsed with `argparse`."""
 
     parser = argparse.ArgumentParser(
@@ -120,7 +120,7 @@ def filter_words(
 # Main logic
 def main() -> None:
     """Entry point for CLI usage."""
-    args = parse_args()
+    args = _parse_args()
 
     # Build position dict from CLI values
     positions: dict[int, str] = {}

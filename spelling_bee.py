@@ -12,41 +12,41 @@ def _parse_args() -> argparse.Namespace:
         / "english-words/words_alpha.txt"
     )
 
-    p = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description="Spelling Bee helper: list all valid words given a letter set."
     )
-    p.add_argument(
+    parser.add_argument(
         "letters",
         metavar="LETTERS",
         help="All allowed letters, e.g. 'ahyblti' (7 letters, lowercase or uppercase)",
     )
-    p.add_argument(
+    parser.add_argument(
         "required_letter",
         metavar="CENTER",
         help="The single mandatory (center) letter; must be included in LETTERS.",
     )
-    p.add_argument(
+    parser.add_argument(
         "-m",
         "--min-length",
         type=int,
         default=4,
         help="Minimum word length (default: 4)",
     )
-    p.add_argument(
+    parser.add_argument(
         "-d",
         "--dictionary",
         type=Path,
         default=default_dict,
         help=f"Path to dictionary file (default: {default_dict})",
     )
-    p.add_argument(
+    parser.add_argument(
         "-o",
         "--output",
         type=Path,
         help="Write results to this file instead of stdout",
     )
 
-    return p.parse_args()
+    return parser.parse_args()
 
 
 # Core funcs
