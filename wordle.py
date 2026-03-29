@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import Iterable
 import argparse
+import sys
 
 # argparse script
 def _parse_args() -> argparse.Namespace:
@@ -55,7 +56,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 # Core funcs
-def load_words(filepath: str | Path) -> set[str]:
+def load_words(dict_path: Path) -> set[str]:
     """
     Load words from a file, convert each to lowercase, + return them as a set.
 
@@ -67,11 +68,11 @@ def load_words(filepath: str | Path) -> set[str]:
     -------
     - `set[str]`: A set of words from the file.
     """
-    with open(filepath) as f:
-        words = {line.strip().lower() for line in f}
-
-    return words
-
+    try:    
+        with dict_path.open("r", encoding="utf-8") as f:
+            return {line.strip().lower() for line in f if line.strip()}
+    except FileNotFoundError as exc:
+        sys.exit(f"Dictionary file not found: {dict_path}\n{exc}")
 
 def filter_words(
     words: Iterable[str],
