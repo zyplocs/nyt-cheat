@@ -114,7 +114,7 @@ def filter_words(
 
 # Main logic
 def main() -> None:
-    """Entry point for CLI usage."""
+    """CLI entry-point."""
     args = _parse_args()
 
     # Build position dict from CLI values
