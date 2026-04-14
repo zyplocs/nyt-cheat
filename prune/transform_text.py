@@ -3,10 +3,9 @@
 import json
 import sys
 
-# Paste a block of text between the triple quotes, then run:
-#   python3 prune/transform_text.py
+# If working locally, feel free to paste the text block in the constant below
 #
-# Or skip editing this file and pipe clipboard text instead:
+# Alternately, skip editing this file and pipe clipboard text:
 #   pbpaste | python3 prune/transform_text.py
 PASTED_TEXT = """
 """
