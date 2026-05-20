@@ -1,3 +1,5 @@
+# wordle_tui.py
+
 """TUI helper for NYT Wordle.
 
 Runs in the terminal using Python's built-in ``curses`` module.  It
@@ -5,8 +7,7 @@ prompts for constraints and then prints matching candidate words.
 
 Usage
 -----
-Run directly:
-    python wordle_tui.py
+$ python wordle_tui.py
 
 Controls
 --------
@@ -148,15 +149,36 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[int, str, str
 class Field:
     """Robust text-input field with validation and display logic."""
 
-    def __init__(self, label: str, x: int, width: int, value: str = "", field_type: str = "text", palette: dict[str, int] | None = None) -> None:
+    def __init__(
+            self,
+            label: str,
+            x: int,
+            width: int,
+            value: str = "",
+            field_type: str = "text",
+            palette: dict[str, int] | None = None
+        ) -> None:
         self.label = label
         self.x = x  # column position on the screen
         self.width = width  # max chars displayed (incl. space for cursor)
         self.value = value
         self.field_type = field_type  # "length", "pattern", "include", "exclude"
-        self.palette = palette or {"normal": curses.A_NORMAL, "focus": curses.A_UNDERLINE, "editing": curses.A_REVERSE | curses.A_BOLD}
+        self.palette = (
+            palette
+            or {
+                "normal": curses.A_NORMAL,
+                "focus": curses.A_UNDERLINE,
+                "editing": curses.A_REVERSE | curses.A_BOLD,
+            }
+        )
 
-    def render(self, win: "curses._CursesWindow", y: int, focused: bool, editing: bool = False) -> None:
+    def render(
+            self,
+            win: "curses._CursesWindow",
+            y: int,
+            focused: bool,
+            editing: bool = False
+        ) -> None:
         """Render the field with appropriate highlighting."""
         try:
             # Different highlighting for focused vs editing states
@@ -166,19 +188,19 @@ class Field:
                 attr = self.palette["focus"]
             else:
                 attr = self.palette["normal"]
-                
+
             # Safely add label
             max_y, max_x = win.getmaxyx()
             if y < max_y and self.x < max_x:
                 win.addstr(y, min(self.x, max_x - 1), self.label[:max_x - self.x - 1])
-            
+
             # Display value with cursor if editing
             # Ensure cursor fits within width allocation
             max_value_len = max(1, self.width - 1)
             display_value = self.value[:max_value_len].ljust(max_value_len)
             if editing:
                 display_value += " "
-            
+
             field_x = self.x + len(self.label) + 1
             if y < max_y and field_x < max_x:
                 # Don't overflow the field bounds…
@@ -197,7 +219,7 @@ class Field:
         """Add character to field value with validation. Returns True if added successfully."""
         if len(self.value) >= self.width - 1:
             return False
-            
+
         # Validation based on field type
         if self.field_type == "length":
             if not char.isdigit():

@@ -1,6 +1,5 @@
-#!/usr/bin/env python3
+# spelling_bee_tui.py
 
-# spelling_bee_curses.py
 """TUI helper for NYT Spelling Bee
 
 Python 3.10+ is required because the key-dispatch loop relies on
@@ -8,7 +7,7 @@ Python 3.10+ is required because the key-dispatch loop relies on
 
 Usage
 -----
-$ python spelling_bee_curses.py
+$ python spelling_bee_tui.py
 
 Inside the UI
 -------------
@@ -20,6 +19,7 @@ Inside the UI
 • Esc         exit text editing mode / quit program
 • q           quit program (when not in edit mode)
 """
+
 from __future__ import annotations
 
 import curses
