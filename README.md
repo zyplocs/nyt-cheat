@@ -1,12 +1,12 @@
-# NYT Cheat Helpers
+# NYT Games Cheats
 
 This repository contains small Python helpers for finding candidate words for NYT Wordle and Spelling Bee.
 
-The scripts use the word list at `english-words/words_alpha.txt`. There are no third-party Python dependencies; the terminal interfaces use Python's built-in `curses` module.
+The scripts use the word list at `english-words/words_alpha.txt`. The terminal interfaces are `curses`-based modules.
 
 ## Requirements
 
-Use Python 3.10 or newer.
+Use Python 3.10+.
 
 If the word list is missing after cloning the repository, initialize the submodule:
 
@@ -44,4 +44,4 @@ python spelling_bee_tui.py
 
 ## Notes
 
-These scripts are local tools. They do not connect to NYT services or check whether a candidate word is accepted by a specific puzzle.
+These scripts are local tools; they do not connect to NYT services or check whether a candidate word is accepted by a specific puzzle.
