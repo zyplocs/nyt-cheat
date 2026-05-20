@@ -125,8 +125,8 @@ def main() -> None:  # noqa: D401
     if args.output:
         try:
             args.output.write_text(word_lines + "\n", encoding="utf-8")
-        except Exception as e:
-            sys.exit(f"Could not write output file {args.output}: {e}")
+        except OSError as exc:
+            sys.exit(f"Could not write output file {args.output}: {exc}")
 
     # Always print to stdout
     print(header)

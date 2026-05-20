@@ -119,13 +119,13 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[int, str, str
     stdscr.addstr(2, 0, f"Word length (default {DEFAULT_LENGTH}): ")
     length_in = stdscr.getstr().decode().strip()
 
-    stdscr.addstr(3, 0, f"Pattern with _ for unknown (e.g. t_a_t): ")
+    stdscr.addstr(3, 0, "Pattern with _ for unknown (e.g. t_a_t): ")
     pattern_in = stdscr.getstr().decode().strip().lower()
 
-    stdscr.addstr(4, 0, f"Letters that must appear (e.g. ar): ")
+    stdscr.addstr(4, 0, "Letters that must appear (e.g. ar): ")
     include_in = stdscr.getstr().decode().strip().lower()
 
-    stdscr.addstr(5, 0, f"Letters that must NOT appear (e.g. seb): ")
+    stdscr.addstr(5, 0, "Letters that must NOT appear (e.g. seb): ")
     exclude_in = stdscr.getstr().decode().strip().lower()
 
     curses.noecho()
@@ -242,9 +242,7 @@ def safe_load_words() -> set[str]:
     """Safely load words with error handling."""
     try:
         return wordle.load_words(DATASET_PATH)
-    except FileNotFoundError:
-        return set()
-    except Exception:
+    except (OSError, UnicodeError):
         return set()
 
 
@@ -278,7 +276,7 @@ def main(stdscr: "curses._CursesWindow") -> None:
     # Get initial parameters
     try:
         length_default, pattern_default, include_default, exclude_default = prompt_initial_params(stdscr)
-    except Exception:
+    except (curses.error, UnicodeError):
         # Use defaults if prompting fails
         length_default = DEFAULT_LENGTH
         pattern_default = DEFAULT_PATTERN
@@ -355,45 +353,51 @@ def main(stdscr: "curses._CursesWindow") -> None:
         """Run the word filter with comprehensive error handling."""
         nonlocal results, offset, error_msg
         error_msg = ""
-        
+
+        # Parse field values with validation
         try:
-            # Parse field values with validation
-            try:
-                word_length = int(fields[0].value) if fields[0].value else DEFAULT_LENGTH
-                word_length = max(1, min(20, word_length))
-            except ValueError:
-                word_length = DEFAULT_LENGTH
+            word_length = int(fields[0].value) if fields[0].value else DEFAULT_LENGTH
+            word_length = max(1, min(20, word_length))
+        except ValueError:
+            word_length = DEFAULT_LENGTH
 
-            pattern = fields[1].value.lower() if fields[1].value else ""
-            include_str = fields[2].value.lower() if fields[2].value else ""
-            exclude_str = fields[3].value.lower() if fields[3].value else ""
+        pattern = fields[1].value.lower() if fields[1].value else ""
+        include_str = fields[2].value.lower() if fields[2].value else ""
+        exclude_str = fields[3].value.lower() if fields[3].value else ""
 
-            # Validate pattern length matches word length if both specified
-            if pattern and word_length and len(pattern) != word_length:
-                error_msg = f"Pattern length ({len(pattern)}) doesn't match word length ({word_length})"
-                results = []
-                offset = 0
-                return
+        # Validate pattern length matches word length if both specified
+        if pattern and word_length and len(pattern) != word_length:
+            error_msg = (
+                f"Pattern length ({len(pattern)}) "
+                f"doesn't match word length ({word_length})"
+            )
+            results = []
+            offset = 0
+            return
 
-            # Parse pattern into specific positions
-            specific_positions: Dict[int, str] = {}
-            if pattern:
-                specific_positions = {
-                    idx: ch for idx, ch in enumerate(pattern) if ch != "_"
-                }
+        # Parse pattern into specific positions
+        specific_positions: Dict[int, str] = {}
+        if pattern:
+            specific_positions = {
+                idx: ch for idx, ch in enumerate(pattern) if ch != "_"
+            }
 
-            include_letters: Set[str] = set(include_str)
-            exclude_letters: Set[str] = set(exclude_str)
+        include_letters: Set[str] = set(include_str)
+        exclude_letters: Set[str] = set(exclude_str)
 
-            # Check for conflicting constraints
-            conflict = include_letters & exclude_letters
-            if conflict:
-                error_msg = f"Letters can't be both included and excluded: {', '.join(sorted(conflict))}"
-                results = []
-                offset = 0
-                return
+        # Check for conflicting constraints
+        conflict = include_letters & exclude_letters
+        if conflict:
+            error_msg = (
+                "Letters can't be both included and excluded: "
+                f"{', '.join(sorted(conflict))}"
+            )
+            results = []
+            offset = 0
+            return
 
-            # Run the filter
+        # Run the filter
+        try:
             results = wordle.filter_words(
                 words,
                 word_length=word_length,
@@ -402,9 +406,8 @@ def main(stdscr: "curses._CursesWindow") -> None:
                 exclude_letters=exclude_letters,
             )
             offset = 0
-
-        except Exception as e:
-            error_msg = f"Filter error: {str(e)}"
+        except (TypeError, IndexError) as exc:
+            error_msg = f"Filter error: {exc}"
             results = []
             offset = 0
 
@@ -471,7 +474,7 @@ def main(stdscr: "curses._CursesWindow") -> None:
                 case _:
                     # Ignore all other keys
                     pass
-        except Exception:
+        except curses.error:
             # Continue even if key handling fails
             pass
 
