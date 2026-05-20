@@ -18,10 +18,8 @@ Controls
 • Enter       run the filter with current params
 • Esc         exit text editing mode / quit program
 • q           quit program (when not in edit mode)
-
-Requires no third-party dependencies (only the ``wordle.py`` module in
-this directory and the ``english-words/words_alpha.txt`` data file).
 """
+
 from __future__ import annotations
 
 import curses
