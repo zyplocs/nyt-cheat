@@ -25,6 +25,8 @@ from __future__ import annotations
 import curses
 from pathlib import Path
 
+import spelling_bee
+
 
 ALLOWED_LETTERS_DEFAULT: set[str] = {"d", "i", "l", "t", "m", "a", "n"}
 REQUIRED_LETTER_DEFAULT: str = "l"
@@ -34,29 +36,10 @@ MIN_LENGTH_DEFAULT: int = 4
 WORD_FILE = Path(__file__).resolve().parent / "english-words" / "words_alpha.txt"
 
 
-def load_words(path: Path = WORD_FILE) -> set[str]:
-    """Return a set of lowercase words read from `path`."""
-    with open(path, "r", encoding="utf-8") as fp:
-        return {line.strip().lower() for line in fp}
-
-
-def filter_words(
-    words: set[str],
-    allowed: set[str],
-    required: str,
-    min_len: int,
-) -> list[str]:
-    """Return lexicographically-sorted list matching Spelling Bee rules."""
-    return sorted(
-        w
-        for w in words
-        if len(w) >= min_len and required in w and set(w) <= allowed
-    )
-
 def is_pangram(word: str, allowed: set[str]) -> bool:
     return set(word) == allowed
 
-WORDS: set[str] = load_words()
+WORDS: set[str] = spelling_bee.load_words(WORD_FILE)
 
 # Begin curses UI
 HELP_BAR = (
@@ -299,7 +282,7 @@ def main(stdscr: "curses._CursesWindow") -> None:  # type: ignore[name-defined]
         except ValueError:
             # Non-numeric min length: treat as 0
             min_len = 0
-        results = filter_words(WORDS, letters, required, min_len)
+        results = spelling_bee.filter_words(WORDS, letters, required, min_len)
         offset = 0
 
     # Initial run & draw
