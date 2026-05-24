@@ -22,7 +22,7 @@ def read_words(path: Path) -> Set[str]:
     try:
         with path.open("r", encoding="utf-8") as f:
             return {line.strip().lower() for line in f if line.strip()}
-    except Exception as e:
+    except (OSError, UnicodeDecodeError) as e:
         sys.exit(f"Error reading {path}: {e}")
 
 
@@ -37,7 +37,7 @@ def parse_answers_str(s: str) -> Set[str]:
             tokens = [data]
         else:
             tokens = []
-    except Exception:
+    except json.JSONDecodeError:
         # Fallback: split by commas or any whitespace
         tokens = re.split(r"[\s,]+", s)
     out: Set[str] = set()
@@ -269,11 +269,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     if bad_source:
         print(f"  Bad/Fakes : {bad_source}")
     else:
-        print(f"  Bad/Fakes : (none provided; removals disabled or zero)")
+        print("  Bad/Fakes : (none provided; removals disabled or zero)")
     if answers_source:
         print(f"  Answers   : {answers_source}")
     else:
-        print(f"  Answers   : (none provided; additions depend on fakes only)")
+        print("  Answers   : (none provided; additions depend on fakes only)")
     if args.output:
         print(f"  Output    : {Path(args.output).resolve()}")
     if args.date:
