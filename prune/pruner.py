@@ -198,8 +198,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         pasted = sys.stdin.read()
         answers_words = parse_answers_str(pasted)
         answers_source = "--answers-stdin"
-    elif args.true:
-        true_path = Path(args.true).resolve()
+    elif args.answers:
+        true_path = Path(args.answers).resolve()
         answers_words = read_words(true_path)
         answers_source = str(true_path)
     elif args.date:
@@ -221,8 +221,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             bad_words = output_words - answers_words
             bad_source = f"computed from {output_path} - {len(bad_words)}"
     if not bad_words:
-        if args.bad:
-            bad_path = Path(args.bad).resolve()
+        if args.fakes:
+            bad_path = Path(args.fakes).resolve()
             bad_words = read_words(bad_path)
             bad_source = str(bad_path)
         elif args.date:
