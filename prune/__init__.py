@@ -1,0 +1,1 @@
+"""This file exists so that `auto.py` can run as a module."""
