@@ -7,9 +7,9 @@ This workflow uses NYT Spelling Bee answers as an empirical validator for the su
 - **Dictionary** at `english-words/words_alpha.txt`
 - **Scripts executable**:
   
-  ```bash
-  chmod +x prune/derive_fakes.sh prune/batch_prune.sh
-  ```
+```bash
+chmod +x prune/derive_fakes.sh prune/batch_prune.sh
+```
 
 - **Data directory**: store daily files in `prune/data/`
   - `answers_*.txt`, `output_*.txt`, `fakes_*.txt`
