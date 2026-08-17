@@ -6,7 +6,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from extractor import (
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from prune.extractor import (
     SPELLING_BEE_URL,
     SpellingBeeDataError,
     SpellingBeeFetchError,
