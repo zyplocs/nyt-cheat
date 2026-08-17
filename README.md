@@ -44,4 +44,4 @@ python spelling_bee_tui.py
 
 ## Notes
 
-These scripts are local tools; they do not connect to NYT services or check whether a candidate word is accepted by a specific puzzle.
+These scripts are generally local tools, with a few exceptions.
