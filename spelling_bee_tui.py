@@ -28,8 +28,7 @@ from pathlib import Path
 import spelling_bee
 
 
-ALLOWED_LETTERS_DEFAULT: set[str] = {"d", "i", "l", "t", "m", "a", "n"}
-REQUIRED_LETTER_DEFAULT: str = "l"
+ALLOWED_LETTERS_DEFAULT: str = "lditman"
 MIN_LENGTH_DEFAULT: int = 4
 
 # Locate words list relative to this script
@@ -100,16 +99,19 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[str, str, int
     """Interactive startup form asking the user for initial parameters.
 
     Hitting *Enter* on an empty line keeps the default value.
+    The required letter defaults to the first letter of the chosen sequence.
     Returns `(letters, required_letter, min_length)`.
     """
     curses.echo()
     stdscr.clear()
     stdscr.addstr(0, 0, "NYT Spelling-Bee Cheater ~ press Enter to accept default values", curses.A_BOLD)
 
-    stdscr.addstr(2, 0, f"Letters (default {''.join(ALLOWED_LETTERS_DEFAULT)}): ")
+    stdscr.addstr(2, 0, f"Letters (default {ALLOWED_LETTERS_DEFAULT}): ")
     letters_in = stdscr.getstr().decode().strip().lower()
+    letters = letters_in or ALLOWED_LETTERS_DEFAULT
+    required_default = letters[0]
 
-    stdscr.addstr(3, 0, f"Required letter (default {REQUIRED_LETTER_DEFAULT}): ")
+    stdscr.addstr(3, 0, f"Required letter (default {required_default}): ")
     required_in = stdscr.getstr().decode().strip().lower()
 
     stdscr.addstr(4, 0, f"Minimum word length (default {MIN_LENGTH_DEFAULT}): ")
@@ -118,8 +120,7 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[str, str, int
     curses.noecho()
     stdscr.clear()
 
-    letters = letters_in or "".join(ALLOWED_LETTERS_DEFAULT)
-    required = (required_in or REQUIRED_LETTER_DEFAULT)[:1]
+    required = (required_in or required_default)[:1]
     try:
         min_len = int(min_len_in) if min_len_in else MIN_LENGTH_DEFAULT
     except ValueError:
