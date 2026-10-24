@@ -2,8 +2,7 @@
 
 """TUI helper for NYT Spelling Bee
 
-Python 3.10+ is required because the key-dispatch loop relies on
-`match … case` (structural pattern matching).
+Requires Python 3.10+
 
 Usage
 -----
@@ -100,32 +99,39 @@ def prompt_initial_params(stdscr: "curses._CursesWindow") -> tuple[str, str, int
 
     Hitting *Enter* on an empty line keeps the default value.
     The required letter defaults to the first letter of the chosen sequence.
+    Input uses the same character validation and limits as the main UI.
     Returns `(letters, required_letter, min_length)`.
     """
-    curses.echo()
+    curses.noecho()
     stdscr.clear()
     stdscr.addstr(0, 0, "NYT Spelling-Bee Cheater ~ press Enter to accept default values", curses.A_BOLD)
 
-    stdscr.addstr(2, 0, f"Letters (default {ALLOWED_LETTERS_DEFAULT}): ")
-    letters_in = stdscr.getstr().decode().strip().lower()
+    def read_field(y: int, prompt: str, field_type: str, width: int) -> str:
+        field = Field("", 0, width, field_type=field_type)
+        stdscr.addstr(y, 0, prompt)
+        while True:
+            stdscr.addstr(y, len(prompt), field.value)
+            stdscr.clrtoeol()
+            key = stdscr.getch()
+            if key in (curses.KEY_ENTER, 10, 13):
+                return field.value
+            if key in (curses.KEY_BACKSPACE, 127, 8):
+                field.backspace()
+            elif 32 <= key < 127:
+                field.add_char(chr(key))
+
+    letters_in = read_field(2, f"Letters (default {ALLOWED_LETTERS_DEFAULT}): ", "letters", 10)
     letters = letters_in or ALLOWED_LETTERS_DEFAULT
     required_default = letters[0]
 
-    stdscr.addstr(3, 0, f"Required letter (default {required_default}): ")
-    required_in = stdscr.getstr().decode().strip().lower()
+    required_in = read_field(3, f"Required letter (default {required_default}): ", "required", 2)
 
-    stdscr.addstr(4, 0, f"Minimum word length (default {MIN_LENGTH_DEFAULT}): ")
-    min_len_in = stdscr.getstr().decode().strip()
+    min_len_in = read_field(4, f"Minimum word length (default {MIN_LENGTH_DEFAULT}): ", "minlen", 3)
 
-    curses.noecho()
     stdscr.clear()
 
-    required = (required_in or required_default)[:1]
-    try:
-        min_len = int(min_len_in) if min_len_in else MIN_LENGTH_DEFAULT
-    except ValueError:
-        # Non-numeric min length: treat as 0
-        min_len = MIN_LENGTH_DEFAULT
+    required = required_in or required_default
+    min_len = int(min_len_in) if min_len_in else MIN_LENGTH_DEFAULT
 
     return letters, required, min_len
 
@@ -158,7 +164,7 @@ class Field:
             display_value = self.value[:max_value_len].ljust(max_value_len)
             if editing:
                 display_value += " "
-            
+
             field_x = self.x + len(self.label) + 1
             if y < max_y and field_x < max_x:
                 safe_display = display_value[: max(0, max_x - field_x)]
@@ -170,7 +176,7 @@ class Field:
         """Add character to field value with validation. Returns True if added successfully."""
         if len(self.value) >= self.width - 1:
             return False
-            
+
         # Validation based on field type
         if self.field_type == "letters":
             if not char.isalpha():
