@@ -4,6 +4,40 @@ This scheme uses NYT Spelling Bee answers as an empirical validator for the subm
 
 ## Quick start
 
+For a copied answer table on macOS, run this from the repo root:
+
+```sh
+python3 -m prune.clipboard
+```
+
+Copy the **complete** key, including a `pangram` label. Rows can be words with
+optional lengths and a `pangram` label; blank lines and surrounding quotation
+marks are accepted. Invalid rows, incorrect lengths, duplicates, and inconsistent
+puzzle letters are rejected. The marked pangram must contain seven distinct
+letters. If several letters appear in every answer, the command asks for the
+center letter. It then displays every proposed addition and removal and asks
+`Apply these changes? [y/N]:`. Enter `y` to apply; Enter or `n` cancels.
+
+No intermediate files or network requests are needed. The clipboard is captured
+once, and a unique backup is created next to the dictionary before an atomic
+update. An already-matching dictionary exits without a prompt or backup. A
+dictionary changed during review requires a fresh run.
+
+Optional controls:
+
+- `--dry-run`: preview only.
+- `--center p`: supply a center letter when inference is ambiguous.
+- `--dict PATH`: use a different dictionary.
+- `--conservative`: preserve candidates in the system dictionary; a missing or
+  unreadable system dictionary stops the operation.
+- `--system-dict PATH`: override the system dictionary used by `--conservative`.
+
+Validation cannot prove that the copied key is complete. Removals mean a word is
+absent from the supplied Spelling Bee key, not that it is invalid English. The
+default dictionary is also used by the Wordle helper.
+
+For the automated website-fetching workflow:
+
 From the repo root:
 
 ```bash
@@ -110,12 +144,12 @@ Dry-run is the default; nothing is written without `--apply`.
 | `--no-remove` | `-k` | Skip removing fakes |
 | `--apply` | `-A` | Write changes (otherwise dry-run) |
 | `--yes` | `-y` | Skip the confirmation prompt |
-| `--backup` | `-B` | Create a `.bak-YYYYMMDD-HHMMSS` copy before writing |
+| `--backup` | `-B` | Create a unique `.bak-YYYYMMDD-HHMMSS-*` copy before writing |
 | `--show` | `-S` | Preview count per category (default 20) |
 
 **Backups are opt-in here.** `prune/auto.py` passes `--backup` for you unless you ask for `--no-backup`; calling `pruner.py` directly does not. Add `-B` yourself.
 
-If `--conservative` is set but the system dictionary is missing, the pruner warns and proceeds *without* the safeguard.
+If `--conservative` is set but the system dictionary is missing, the pruner stops without applying changes.
 
 Pasted-answer examples:
 
@@ -185,7 +219,7 @@ cp english-words/words_alpha.txt english-words/words_alpha.txt.bak-manual
 
 - For a Spelling Bee–specific dictionary, omit `--conservative` so fakes are removed aggressively; include it to preserve proper nouns and broader English usage.
 - Always read the dry-run summary before applying. A suspiciously large "REMOVE" count usually means the answers source was wrong or empty.
-- Restore from the `.bak-YYYYMMDD-HHMMSS` file next to `words_alpha.txt` — but only if a backup was actually requested (see §3).
+- Restore from the `.bak-YYYYMMDD-HHMMSS-*` file next to `words_alpha.txt` — but only if a backup was actually requested (see §3).
 - The dictionary is a git submodule, so `git -C english-words diff --stat` and `git -C english-words checkout -- words_alpha.txt` are also available as review/undo tools.
 - `prune/transform_text.py` turns a pasted answer block (e.g. from a spoiler site, with "pangram" markers) into a JSON array, pangrams first — feed it straight to `--answers-str`:
 
