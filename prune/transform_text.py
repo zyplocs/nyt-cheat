@@ -1,7 +1,9 @@
 """Chop hefty blocks of answers into a JSON-style array."""
 
 import json
+import re
 import sys
+from dataclasses import dataclass
 
 # If working locally, feel free to paste the text block in the constant below
 #
@@ -11,24 +13,52 @@ PASTED_TEXT = """
 """
 
 
-def parse_word_block(text: str) -> list[str]:
-    """Extract lowercase words and move pangrams to the front."""
-    pangrams = []
-    others = []
+@dataclass(frozen=True)
+class AnswerTable:
+    words: tuple[str, ...]
+    pangrams: frozenset[str]
 
-    for line in text.splitlines():
-        parts = line.split()
-        if not parts:
+
+def parse_answer_table(text: str) -> AnswerTable:
+    """Read words with optional lengths and pangram labels; reject invalid rows."""
+    text = text.strip()
+    if len(text) >= 2 and (text[0], text[-1]) in {
+        ('"', '"'), ("'", "'"), ('“', '”'),
+    }:
+        text = text[1:-1].strip()
+    words = []
+    pangrams = set()
+    seen = set()
+
+    for number, line in enumerate(text.splitlines(), 1):
+        if not line.strip():
             continue
+        match = re.fullmatch(
+            r"\s*([A-Za-z]{4,})(?:\s+([0-9]+))?(?:\s+(pangram))?\s*",
+            line, re.IGNORECASE | re.ASCII,
+        )
+        if not match:
+            raise ValueError(f"Line {number}: expected a word, optional length, and optional 'pangram' label.")
+        word, length, marker = match.groups()
+        word = word.lower()
+        if length is not None and int(length) != len(word):
+            raise ValueError(f"Line {number}: {word.upper()} has {len(word)} letters, not {length}.")
+        if word in seen:
+            raise ValueError(f"Line {number}: duplicate answer {word.upper()}.")
+        seen.add(word)
+        words.append(word)
+        if marker:
+            pangrams.add(word)
+    if not words:
+        raise ValueError("No answers found. Copy the complete answer table first.")
+    return AnswerTable(tuple(words), frozenset(pangrams))
 
-        word = parts[0].lower()
 
-        if "pangram" in parts[1:]:
-            pangrams.append(word)
-        else:
-            others.append(word)
-
-    return pangrams + others
+def parse_word_block(text: str) -> list[str]:
+    """Extract validated lowercase words and move pangrams to the front."""
+    table = parse_answer_table(text)
+    return ([w for w in table.words if w in table.pangrams]
+            + [w for w in table.words if w not in table.pangrams])
 
 
 def get_input_text() -> str:
@@ -49,7 +79,10 @@ def get_input_text() -> str:
 
 def main() -> None:
     """CLI entry-point."""
-    words = parse_word_block(get_input_text())
+    try:
+        words = parse_word_block(get_input_text())
+    except ValueError as exc:
+        raise SystemExit(f"Error: {exc}") from exc
     print(json.dumps(words))
 
 

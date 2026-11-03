@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import sys
 import tempfile
 from datetime import datetime
@@ -28,6 +29,13 @@ def read_words(path: Path) -> Set[str]:
 
 def parse_answers_str(s: str) -> Set[str]:
     s = s.strip()
+    # Tables contain metadata that must never become dictionary entries.
+    if re.search(r"(?m)^\s*[\"']?[A-Za-z]+[ \t]+(?:[0-9]+|pangram)\b", s, re.IGNORECASE):
+        if __package__:
+            from .transform_text import parse_word_block
+        else:
+            from transform_text import parse_word_block
+        return set(parse_word_block(s))
     # Try JSON first
     try:
         data = json.loads(s)
@@ -55,21 +63,58 @@ def parse_answers_str(s: str) -> Set[str]:
 
 def write_words_atomic(path: Path, words: Iterable[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Write to a temp file in the same directory for atomic replace
-    with tempfile.NamedTemporaryFile(
-        "w", delete=False, dir=str(path.parent), prefix=path.name + ".", suffix=".tmp"
-    ) as tmp:
-        tmp_path = Path(tmp.name)
-        for w in sorted(words):
-            tmp.write(w + "\n")
-    os.replace(tmp_path, path)
+    mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o600
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", encoding="utf-8", delete=False, dir=str(path.parent),
+            prefix=path.name + ".", suffix=".tmp",
+        ) as tmp:
+            tmp_path = Path(tmp.name)
+            for w in sorted(words):
+                tmp.write(w + "\n")
+            tmp.flush()
+            os.fchmod(tmp.fileno(), mode)
+            os.fsync(tmp.fileno())
+        os.replace(tmp_path, path)
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
 
 
 def backup_file(path: Path) -> Path:
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    backup = path.with_name(path.name + f".bak-{ts}")
-    shutil.copy2(path, backup)
+    # Exclusive creation prevents repeated runs from overwriting a backup.
+    with tempfile.NamedTemporaryFile(
+        "wb", dir=str(path.parent), prefix=path.name + f".bak-{ts}-", delete=False,
+    ) as tmp:
+        backup = Path(tmp.name)
+        try:
+            with path.open("rb") as source:
+                shutil.copyfileobj(source, tmp)
+            tmp.flush()
+            os.fsync(tmp.fileno())
+        except BaseException:
+            backup.unlink(missing_ok=True)
+            raise
+    shutil.copystat(path, backup)
     return backup
+
+
+def prompt_user(message: str) -> str:
+    """Keep interactive responses separate from any piped answer data."""
+    if sys.stdin.isatty():
+        return input(message)
+    with open("/dev/tty", "w", encoding="utf-8") as output:
+        output.write(message)
+        output.flush()
+    with open("/dev/tty", "r", encoding="utf-8") as terminal:
+        return terminal.readline().rstrip("\n")
+
+
+def compute_changes(dict_words: Set[str], answers: Set[str], bad_words: Set[str]):
+    """Official answers always take precedence over removal candidates."""
+    return answers - dict_words, (dict_words & bad_words) - answers
 
 
 def load_system_words(path: Optional[Path]) -> Set[str]:
@@ -192,11 +237,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     answers_words: Set[str] = set()
     answers_source = ""
     if args.answers_str:
-        answers_words = parse_answers_str(args.answers_str)
+        try:
+            answers_words = parse_answers_str(args.answers_str)
+        except ValueError as exc:
+            parser.error(str(exc))
         answers_source = "--answers-str"
     elif args.answers_stdin:
         pasted = sys.stdin.read()
-        answers_words = parse_answers_str(pasted)
+        try:
+            answers_words = parse_answers_str(pasted)
+        except ValueError as exc:
+            parser.error(str(exc))
         answers_source = "--answers-stdin"
     elif args.answers:
         true_path = Path(args.answers).resolve()
@@ -220,7 +271,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if answers_words:
             bad_words = output_words - answers_words
             bad_source = f"computed from {output_path} - {len(bad_words)}"
-    if not bad_words:
+    if not (args.output and answers_words):
         if args.fakes:
             bad_path = Path(args.fakes).resolve()
             bad_words = read_words(bad_path)
@@ -236,10 +287,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     dict_words = read_words(dict_path)
 
     # Compute missing and removal candidates
-    missing_words = set()
-    if answers_words:
-        missing_words = answers_words - dict_words
-    removal_candidates = dict_words & bad_words
+    missing_words, removal_candidates = compute_changes(dict_words, answers_words, bad_words)
 
     # Conservative filter
     system_words: Set[str] = set()
@@ -250,7 +298,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             system_words = load_system_words(sys_dict_path)
             effective_conservative = True
         else:
-            print(f"Warning: system dictionary not found at {sys_dict_path}; proceeding without --conservative safeguard.")
+            sys.exit(f"Error: system dictionary not found at {sys_dict_path}; cannot use --conservative.")
 
     if effective_conservative:
         to_remove = {w for w in removal_candidates if w not in system_words}
@@ -297,13 +345,6 @@ def main(argv: Optional[List[str]] = None) -> int:
         print("\nDry-run mode: no changes written. Use --apply to make changes.")
         return 0
 
-    # If apply, optionally prompt
-    if not args.yes:
-        proceed = input("\nApply these changes to the dictionary? [y/N]: ").strip().lower()
-        if proceed not in {"y", "yes"}:
-            print("Aborted by user. No changes made.")
-            return 1
-
     # Build the new word set
     new_words = set(dict_words)
     if missing_words:
@@ -314,6 +355,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     if new_words == dict_words:
         print("\nNo changes necessary. Dictionary already up-to-date with provided inputs.")
         return 0
+
+    if not args.yes:
+        try:
+            proceed = prompt_user("\nApply these changes to the dictionary? [y/N]: ").strip().lower()
+        except (OSError, EOFError, KeyboardInterrupt):
+            proceed = ""
+        if proceed not in {"y", "yes"}:
+            print("Aborted. No changes made.")
+            return 1
 
     # Backup if requested, then write atomically
     if args.backup:
