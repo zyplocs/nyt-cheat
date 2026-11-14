@@ -1,4 +1,4 @@
-# spelling_bee_tui.py
+# tui_spelling_bee.py
 
 """TUI helper for NYT Spelling Bee
 
@@ -6,7 +6,7 @@ Requires Python 3.10+
 
 Usage
 -----
-$ python spelling_bee_tui.py
+$ python tui_spelling_bee.py
 
 Inside the UI
 -------------

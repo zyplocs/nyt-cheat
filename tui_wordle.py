@@ -7,7 +7,7 @@ prompts for constraints and then prints matching candidate words.
 
 Usage
 -----
-$ python wordle_tui.py
+$ python tui_wordle.py
 
 Controls
 --------
