@@ -33,7 +33,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Build the date list from DATA_DIR
-mapfile -t ALL_ANSWERS < <(cd "$DATA_DIR" && ls -1 answers_*.txt 2>/dev/null || true)
+ALL_ANSWERS=()
+while IFS= read -r f; do
+  ALL_ANSWERS+=("$f")
+done < <(cd "$DATA_DIR" && ls -1 answers_*.txt 2>/dev/null || true)
 if [[ ${#ALL_ANSWERS[@]} -eq 0 ]]; then
   echo "No answers_*.txt files found in $DATA_DIR" >&2
   exit 0
