@@ -276,10 +276,10 @@ def find_puzzle(game_data: dict[str, Any], selector: str) -> Puzzle:
 def normalize_date_selector(selector: str) -> str:
     """Normalize MMDDYY or YYYY-MM-DD into YYYY-MM-DD."""
 
-    if len(selector) == 6 and selector.isdigit():
-        return datetime.strptime(selector, "%m%d%y").date().isoformat()
-
     try:
+        if len(selector) == 6 and selector.isdigit():
+            return datetime.strptime(selector, "%m%d%y").date().isoformat()
+
         return date.fromisoformat(selector).isoformat()
     except ValueError as exc:
         raise SpellingBeeDataError(
