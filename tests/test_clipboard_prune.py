@@ -28,6 +28,7 @@ def table(words, pangram):
 
 H_TABLE = table(H_WORDS, 'wheeling')
 P_TABLE = table(P_WORDS, 'practical')
+AMBIGUOUS_TABLE = table(['practical', 'capital', 'clap', 'trap'], 'practical')
 
 
 class TableTests(unittest.TestCase):
@@ -100,6 +101,41 @@ class WorkflowTests(unittest.TestCase):
             self.assertIn('Remove: 1', output)
             self.assertEqual(self.dictionary.read_bytes(), self.original)
             self.assertEqual(self.backups(), [])
+
+    def test_center_option_resolves_ambiguity(self):
+        self.dictionary.write_text('carat\n')
+        for center, removals in [('p', 0), ('A', 1)]:
+            with self.subTest(center=center):
+                code, output, prompts = self.run_cli(
+                    '--dry-run', '--center', center, text=AMBIGUOUS_TABLE,
+                )
+                self.assertEqual((code, prompts), (0, 0))
+                self.assertIn(f'Center: {center.upper()}', output)
+                self.assertIn('Add: 4', output)
+                self.assertIn(f'Remove: {removals}', output)
+        code, output, prompts = self.run_cli(
+            '--center', 'x', text=AMBIGUOUS_TABLE, response='y',
+        )
+        self.assertEqual((code, prompts), (1, 0))
+        self.assertIn('center must be', output)
+        self.assertEqual(self.dictionary.read_text(), 'carat\n')
+        self.assertEqual(self.backups(), [])
+
+    def test_blank_center_cancels(self):
+        code, output, prompts = self.run_cli(
+            text=AMBIGUOUS_TABLE, response='',
+        )
+        self.assertEqual((code, prompts), (1, 1))
+        self.assertIn('No center selected', output)
+        self.assertEqual(self.dictionary.read_bytes(), self.original)
+        self.assertEqual(self.backups(), [])
+
+    def test_interrupt_at_confirmation_exits_130(self):
+        code, output, prompts = self.run_cli(response=KeyboardInterrupt)
+        self.assertEqual((code, prompts), (130, 1))
+        self.assertIn('Cancelled', output)
+        self.assertEqual(self.dictionary.read_bytes(), self.original)
+        self.assertEqual(self.backups(), [])
 
     def test_apply_backup_permissions_and_idempotence(self):
         code, output, prompts = self.run_cli(response='y')
