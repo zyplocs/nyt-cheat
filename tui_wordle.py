@@ -1,4 +1,4 @@
-# wordle_tui.py
+# tui_wordle.py
 
 """TUI helper for NYT Wordle.
 
@@ -262,7 +262,7 @@ def safe_load_words() -> set[str]:
     """Safely load words with error handling."""
     try:
         return wordle.load_words(DATASET_PATH)
-    except (OSError, UnicodeError):
+    except (OSError, UnicodeError, SystemExit):
         return set()
 
 
