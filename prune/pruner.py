@@ -34,18 +34,20 @@ def parse_answers_str(s: str) -> Set[str]:
         if __package__:
             from .transform_text import parse_word_block
         else:
-            from transform_text import parse_word_block
+            from transform_text import parse_word_block  # pylint: disable=import-error
         return set(parse_word_block(s))
     # Try JSON first
     try:
         data = json.loads(s)
-        if isinstance(data, list):
-            tokens = [str(x) for x in data]
-        elif isinstance(data, str):
-            tokens = [data]
-        else:
-            tokens = []
     except json.JSONDecodeError:
+        data = None
+    if isinstance(data, list):
+        tokens = [str(x) for x in data]
+    elif isinstance(data, str):
+        tokens = [data]
+    elif isinstance(data, dict):
+        tokens = []
+    else:
         # Fallback: split by commas or any whitespace
         tokens = re.split(r"[\s,]+", s)
     out: Set[str] = set()
