@@ -25,7 +25,7 @@ python wordle.py --length 5 --position 0:t --include ar --exclude seb
 Run the terminal interface with:
 
 ```sh
-python wordle_tui.py
+python tui_wordle.py
 ```
 
 ## Spelling Bee
@@ -39,9 +39,20 @@ python spelling_bee.py ahyblti y
 Run the terminal interface with:
 
 ```sh
-python spelling_bee_tui.py
+python tui_spelling_bee.py
 ```
 
 ## Notes
+
+To update the dictionary from a complete copied Spelling Bee answer table on macOS:
+
+```sh
+python3 -m prune.clipboard
+```
+
+Include the word-length column and `pangram` label when copying. The command infers
+the puzzle letters, previews additions and removals, and asks before applying them.
+It creates a backup automatically. Use `--dry-run` for a preview only. See
+[the pruning guide](prune/how2.md) for details.
 
 These scripts are generally local tools, with a few exceptions.
