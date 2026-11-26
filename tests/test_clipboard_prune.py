@@ -46,9 +46,26 @@ class TableTests(unittest.TestCase):
         self.assertEqual(pruner.parse_answers_str(H_TABLE), set(H_WORDS))
         self.assertEqual(pruner.parse_answers_str(P_TABLE), set(P_WORDS))
 
+    def test_perfect_pangram_label(self):
+        words = ['clot', 'coil', 'lilt', 'linocut', 'locution']
+        tabbed = ('CLOT\t\t4\nCOIL\t\t4\nLILT\t\t4\n'
+                  'LINOCUT\t\t7\t\tperfect pangram\nLOCUTION\t\t8\t\tpangram')
+        bare = 'CLOT\nCOIL\nLILT\nLINOCUT Perfect  Pangram\nLOCUTION pangram'
+        for text in [tabbed, bare]:
+            with self.subTest(text=text):
+                parsed = parse_answer_table(text)
+                self.assertEqual(parsed.words, tuple(words))
+                self.assertEqual(parsed.pangrams, frozenset({'linocut', 'locution'}))
+                self.assertEqual(clipboard.puzzle_letters(parsed), (set('cilnotu'), {'l'}))
+                self.assertEqual(parse_word_block(text)[:2], ['linocut', 'locution'])
+                self.assertEqual(pruner.parse_answers_str(text), set(words))
+        self.assertEqual(pruner.parse_answers_str('CLOT\nLINOCUT perfect pangram'),
+                         {'clot', 'linocut'})
+
     def test_invalid_rows(self):
         for text in ['', 'WORD LENGTH', 'GHEE 5', 'GHEE 4\nghee 4',
-                     'GHEE 4 extra', 'GHEE 4; touch /tmp/no', 'CAFÉ 4', 'CAT 3']:
+                     'GHEE 4 extra', 'GHEE 4; touch /tmp/no', 'CAFÉ 4', 'CAT 3',
+                     'GHEE 4 perfect', 'LINOCUT 7 imperfect pangram']:
             with self.subTest(text=text), self.assertRaises(ValueError):
                 parse_answer_table(text)
 

@@ -11,7 +11,7 @@ python3 -m prune.clipboard
 ```
 
 Copy the **complete** key, including a `pangram` label. Rows can be words with
-optional lengths and a `pangram` label; blank lines and surrounding quotation
+optional lengths and a `pangram` or `perfect pangram` label; blank lines and surrounding quotation
 marks are accepted. Invalid rows, incorrect lengths, duplicates, and inconsistent
 puzzle letters are rejected. The marked pangram must contain seven distinct
 letters. If several letters appear in every answer, the command asks for the

@@ -30,7 +30,7 @@ def read_words(path: Path) -> Set[str]:
 def parse_answers_str(s: str) -> Set[str]:
     s = s.strip()
     # Tables contain metadata that must never become dictionary entries.
-    if re.search(r"(?m)^\s*[\"']?[A-Za-z]+[ \t]+(?:[0-9]+|pangram)\b", s, re.IGNORECASE):
+    if re.search(r"(?m)^\s*[\"']?[A-Za-z]+[ \t]+(?:[0-9]+|(?:perfect[ \t]+)?pangram)\b", s, re.IGNORECASE):
         if __package__:
             from .transform_text import parse_word_block
         else:

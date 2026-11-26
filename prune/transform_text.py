@@ -34,11 +34,11 @@ def parse_answer_table(text: str) -> AnswerTable:
         if not line.strip():
             continue
         match = re.fullmatch(
-            r"\s*([A-Za-z]{4,})(?:\s+([0-9]+))?(?:\s+(pangram))?\s*",
+            r"\s*([A-Za-z]{4,})(?:\s+([0-9]+))?(?:\s+((?:perfect\s+)?pangram))?\s*",
             line, re.IGNORECASE | re.ASCII,
         )
         if not match:
-            raise ValueError(f"Line {number}: expected a word, optional length, and optional 'pangram' label.")
+            raise ValueError(f"Line {number}: expected a word, optional length, and optional 'pangram' or 'perfect pangram' label.")
         word, length, marker = match.groups()
         word = word.lower()
         if length is not None and int(length) != len(word):
