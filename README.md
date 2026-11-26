@@ -44,10 +44,10 @@ python tui_spelling_bee.py
 
 ## Notes
 
-To update the dictionary from a complete copied Spelling Bee answer table on macOS:
+To update the dictionary from a complete copied Spelling Bee answer table (macOS only):
 
 ```sh
-python3 -m prune.clipboard
+python -m prune.clipboard
 ```
 
 Include the word-length column and `pangram` label when copying. The command infers
