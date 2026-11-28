@@ -1,3 +1,5 @@
+"""Tests for clipboard answer parsing and safe dictionary-pruning workflows."""
+
 import contextlib
 import io
 import stat
@@ -22,6 +24,7 @@ practical prat priapic rapt rattrap tapa tapir tarp tilapia tipi trap trip""".sp
 
 
 def table(words, pangram):
+    """Format words as answer-table rows with one marked pangram."""
     return '\n'.join(f'{word.upper()}\t\t{len(word)}' +
                      ('\t\tpangram' if word == pangram else '') for word in words)
 
@@ -32,7 +35,10 @@ AMBIGUOUS_TABLE = table(['practical', 'capital', 'clap', 'trap'], 'practical')
 
 
 class TableTests(unittest.TestCase):
+    """Check answer-table parsing and puzzle-letter validation."""
+
     def test_both_supplied_keys_and_surrounding_quotes(self):
+        """Parse both sample puzzles with or without surrounding quotes."""
         for text, words, pangram, letters, center in [
             (H_TABLE, H_WORDS, 'wheeling', 'eghilnw', 'h'),
             (P_TABLE, P_WORDS, 'practical', 'acilprt', 'p'),
@@ -47,6 +53,7 @@ class TableTests(unittest.TestCase):
         self.assertEqual(pruner.parse_answers_str(P_TABLE), set(P_WORDS))
 
     def test_perfect_pangram_label(self):
+        """Accept regular and perfect pangram labels in either table format."""
         words = ['clot', 'coil', 'lilt', 'linocut', 'locution']
         tabbed = ('CLOT\t\t4\nCOIL\t\t4\nLILT\t\t4\n'
                   'LINOCUT\t\t7\t\tperfect pangram\nLOCUTION\t\t8\t\tpangram')
@@ -63,6 +70,7 @@ class TableTests(unittest.TestCase):
                          {'clot', 'linocut'})
 
     def test_invalid_rows(self):
+        """Reject malformed, duplicate, or inconsistent answer rows."""
         for text in ['', 'WORD LENGTH', 'GHEE 5', 'GHEE 4\nghee 4',
                      'GHEE 4 extra', 'GHEE 4; touch /tmp/no', 'CAFÉ 4', 'CAT 3',
                      'GHEE 4 perfect', 'LINOCUT 7 imperfect pangram']:
@@ -70,6 +78,7 @@ class TableTests(unittest.TestCase):
                 parse_answer_table(text)
 
     def test_invalid_puzzles(self):
+        """Reject tables without a valid seven-letter puzzle and center."""
         for text in ['GHEE 4', 'GHEE 4 pangram',
                      H_TABLE + '\nZEBRA 5', H_TABLE + '\nWINE 4',
                      H_TABLE + '\nPRACTICAL 9 pangram']:
@@ -77,6 +86,7 @@ class TableTests(unittest.TestCase):
                 clipboard.puzzle_letters(parse_answer_table(text))
 
     def test_ambiguous_center_and_invalid_override(self):
+        """Prompt again for an invalid center and reject a bad override."""
         with patch.object(pruner, 'prompt_user', side_effect=['zz', 'P']) as prompt:
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(clipboard.choose_center({'a', 'p'}, None), 'p')
@@ -86,6 +96,8 @@ class TableTests(unittest.TestCase):
 
 
 class WorkflowTests(unittest.TestCase):
+    """Exercise clipboard-driven dictionary updates and their safeguards."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -98,19 +110,25 @@ class WorkflowTests(unittest.TestCase):
 
     def run_cli(self, *args, text=H_TABLE,
                 response: str | Callable[[str], str] | type[BaseException] = 'n'):
+        """Run the CLI with mocked clipboard and prompt, capturing its output."""
         out = io.StringIO()
         with patch.object(clipboard, 'read_clipboard', return_value=text) as read:
-            with patch.object(pruner, 'prompt_user', side_effect=response if callable(response) else None,
-                              return_value=response) as prompt:
+            with patch.object(
+                pruner, 'prompt_user',
+                side_effect=response if callable(response) else None,
+                return_value=response,
+            ) as prompt:
                 with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
                     code = clipboard.main(['--dict', str(self.dictionary), *args])
         self.assertEqual(read.call_count, 1)
         return code, out.getvalue(), prompt.call_count
 
     def backups(self):
+        """List backups of the temporary dictionary."""
         return list(self.directory.glob('words.txt.bak-*'))
 
     def test_preview_then_decline(self):
+        """Keep the dictionary unchanged for a dry run or declined update."""
         for args, responses in [(('--dry-run',), 0), ((), 1)]:
             code, output, prompts = self.run_cli(*args)
             self.assertEqual(code, 0)
@@ -121,6 +139,7 @@ class WorkflowTests(unittest.TestCase):
             self.assertEqual(self.backups(), [])
 
     def test_center_option_resolves_ambiguity(self):
+        """Use the selected center and reject overrides outside the puzzle."""
         self.dictionary.write_text('carat\n')
         for center, removals in [('p', 0), ('A', 1)]:
             with self.subTest(center=center):
@@ -140,6 +159,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.backups(), [])
 
     def test_blank_center_cancels(self):
+        """Cancel without writing when no center is selected."""
         code, output, prompts = self.run_cli(
             text=AMBIGUOUS_TABLE, response='',
         )
@@ -149,6 +169,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.backups(), [])
 
     def test_interrupt_at_confirmation_exits_130(self):
+        """Leave the dictionary intact on a confirmation interrupt."""
         code, output, prompts = self.run_cli(response=KeyboardInterrupt)
         self.assertEqual((code, prompts), (130, 1))
         self.assertIn('Cancelled', output)
@@ -156,6 +177,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.backups(), [])
 
     def test_apply_backup_permissions_and_idempotence(self):
+        """Back up before applying changes and avoid repeat writes."""
         code, output, prompts = self.run_cli(response='y')
         self.assertEqual((code, prompts), (0, 1))
         self.assertIn('Applied: added 1, removed 1.', output)
@@ -169,18 +191,24 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(len(self.backups()), 1)
 
     def test_invalid_input_never_prompts_or_writes(self):
+        """Fail before prompting or writing when clipboard data is invalid."""
         code, _, prompts = self.run_cli(text='GHEE 5', response='y')
         self.assertEqual((code, prompts), (1, 0))
         self.assertEqual(self.dictionary.read_bytes(), self.original)
         self.assertEqual(self.backups(), [])
 
     def test_missing_conservative_dictionary_stops(self):
+        """Require an existing system dictionary in conservative mode."""
         with self.assertRaises(SystemExit):
-            self.run_cli('--conservative', '--system-dict', str(self.directory / 'missing'), response='y')
+            self.run_cli(
+                '--conservative', '--system-dict', str(self.directory / 'missing'),
+                response='y',
+            )
         self.assertEqual(self.dictionary.read_bytes(), self.original)
         self.assertEqual(self.backups(), [])
 
     def test_conservative_preserves_system_words(self):
+        """Preserve system words that would otherwise be removed."""
         system = self.directory / 'system.txt'
         system.write_text('hhhh\n')
         code, output, _ = self.run_cli('--conservative', '--system-dict', str(system), response='y')
@@ -189,7 +217,9 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(pruner.read_words(self.dictionary), set(H_WORDS) | {'hhhh', 'zebra'})
 
     def test_changed_dictionary_requires_new_preview(self):
+        """Refuse to overwrite a dictionary changed after the preview."""
         def change_during_review(_):
+            """Simulate a concurrent edit before confirming the update."""
             self.dictionary.write_bytes(self.original + b'newword\n')
             return 'y'
         code, output, _ = self.run_cli(response=change_during_review)
@@ -199,6 +229,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.backups(), [])
 
     def test_failed_backup_prevents_write(self):
+        """Leave the original intact if creating its backup fails."""
         with patch.object(pruner, 'backup_file', side_effect=OSError('backup failed')):
             code, output, _ = self.run_cli(response='y')
         self.assertEqual(code, 1)
@@ -206,6 +237,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(self.dictionary.read_bytes(), self.original)
 
     def test_failed_replace_preserves_original_and_backup(self):
+        """Retain the original and backup when atomic replacement fails."""
         with patch.object(pruner.os, 'replace', side_effect=OSError('replace failed')):
             code, _, _ = self.run_cli(response='y')
         self.assertEqual(code, 1)
@@ -214,12 +246,14 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(list(self.directory.glob('*.tmp')), [])
 
     def test_backups_are_unique(self):
+        """Create distinct backup paths without changing their contents."""
         first = pruner.backup_file(self.dictionary)
         second = pruner.backup_file(self.dictionary)
         self.assertNotEqual(first, second)
         self.assertEqual(first.read_bytes(), second.read_bytes())
 
     def test_answers_override_fakes_and_empty_diff_does_not_fall_back(self):
+        """Honor explicit answers even when the fake-word source is missing."""
         self.assertEqual(pruner.compute_changes({'ghee'}, {'ghee'}, {'ghee'}), (set(), set()))
         output = self.directory / 'output.txt'
         output.write_text('ghee\n')
@@ -231,13 +265,20 @@ class WorkflowTests(unittest.TestCase):
 
 
 class ClipboardReadTests(unittest.TestCase):
+    """Check clipboard subprocess execution and failure handling."""
+
     def test_reads_data_without_a_shell(self):
-        with patch.object(subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, H_TABLE)) as run:
+        """Read clipboard text through pbpaste without a shell."""
+        with patch.object(
+            subprocess, 'run',
+            return_value=subprocess.CompletedProcess([], 0, H_TABLE),
+        ) as run:
             self.assertEqual(clipboard.read_clipboard(), H_TABLE)
         self.assertEqual(run.call_args.args[0], ['/usr/bin/pbpaste'])
         self.assertFalse(run.call_args.kwargs.get('shell', False))
 
     def test_clipboard_failure(self):
+        """Report a missing clipboard command as invalid input."""
         with patch.object(subprocess, 'run', side_effect=FileNotFoundError):
             with self.assertRaises(ValueError):
                 clipboard.read_clipboard()

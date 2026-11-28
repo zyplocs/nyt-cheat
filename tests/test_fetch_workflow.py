@@ -1,3 +1,5 @@
+"""Tests for Spelling Bee extraction, fetching, and automated pruning."""
+
 import contextlib
 import io
 import json
@@ -45,18 +47,24 @@ GAME_DATA = {
 
 
 def page_html(game_data=None):
+    """Embed puzzle data in mock HTML alongside unrelated scripts."""
     return (
         '<html><head><script>window.other = {"x": {"y": 1}};</script></head><body>'
-        f'<script type="text/javascript">window.gameData = {json.dumps(game_data or GAME_DATA)}</script>'
+        f'<script type="text/javascript">window.gameData = '
+        f'{json.dumps(game_data or GAME_DATA)}</script>'
         '<script>window.after = {"z": "}"};</script></body></html>'
     )
 
 
 class ExtractorTests(unittest.TestCase):
+    """Check puzzle extraction, selection, file writes, and HTTP retrieval."""
+
     def test_extract_game_data(self):
+        """Extract gameData without confusing it with other scripts."""
         self.assertEqual(extractor.extract_game_data(page_html()), GAME_DATA)
 
     def test_extract_game_data_errors(self):
+        """Report missing or malformed embedded puzzle data."""
         for html in [
             'no data here',
             '<script>window.gameData</script><script>x = {}</script>',
@@ -69,6 +77,7 @@ class ExtractorTests(unittest.TestCase):
                 extractor.extract_game_data(html)
 
     def test_find_matching_json_object_end(self):
+        """Ignore braces in JSON strings and reject non-object starts."""
         text = '{"a": "}", "b": {"c": "q\\"}"}} trailing }'
         end = extractor.find_matching_json_object_end(text, 0)
         expected = '{"a": "}", "b": {"c": "q\\"}"}}'
@@ -78,6 +87,7 @@ class ExtractorTests(unittest.TestCase):
             extractor.find_matching_json_object_end(text, 1)
 
     def test_puzzle_from_dict(self):
+        """Normalize case and optional metadata when building a puzzle."""
         data = {
             **TODAY, 'centerLetter': 'H',
             'outerLetters': [letter.upper() for letter in TODAY['outerLetters']],
@@ -98,6 +108,7 @@ class ExtractorTests(unittest.TestCase):
         self.assertIsNone(puzzle.editor)
 
     def test_puzzle_from_dict_errors(self):
+        """Reject missing answer fields and answers of the wrong type."""
         data = {key: value for key, value in TODAY.items() if key not in {'answers', 'pangrams'}}
         with self.assertRaises(extractor.SpellingBeeDataError) as raised:
             extractor.puzzle_from_dict(data)
@@ -106,6 +117,7 @@ class ExtractorTests(unittest.TestCase):
             extractor.puzzle_from_dict({**TODAY, 'answers': 'ghee'})
 
     def test_puzzle_properties_and_lists(self):
+        """Expose formatted puzzle details and deduplicate dated listings."""
         puzzle = extractor.puzzle_from_dict(TODAY)
         self.assertEqual(puzzle.date_token, '111426')
         self.assertEqual(puzzle.letters_string, 'hegilnw')
@@ -116,6 +128,7 @@ class ExtractorTests(unittest.TestCase):
         )
 
     def test_find_puzzle(self):
+        """Resolve relative and explicit dates or report unavailable puzzles."""
         cases = [
             ('today', '2026-11-14'),
             (' Yesterday ', '2026-11-13'),
@@ -136,6 +149,7 @@ class ExtractorTests(unittest.TestCase):
                 extractor.find_puzzle(data, selector)
 
     def test_normalize_date_selector(self):
+        """Accept six-digit and ISO dates but reject invalid selectors."""
         self.assertEqual(extractor.normalize_date_selector('111426'), '2026-11-14')
         self.assertEqual(extractor.normalize_date_selector('2026-11-14'), '2026-11-14')
         for selector in ('nope', '2026-13-01'):
@@ -143,10 +157,12 @@ class ExtractorTests(unittest.TestCase):
                 extractor.normalize_date_selector(selector)
 
     def test_normalize_invalid_six_digit_selector(self):
+        """Reject an impossible six-digit date."""
         with self.assertRaises(extractor.SpellingBeeDataError):
             extractor.normalize_date_selector('999999')
 
     def test_write_word_file(self):
+        """Normalize, order, and safely overwrite word files."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = root / 'a' / 'b' / 'w.txt'
@@ -175,6 +191,7 @@ class ExtractorTests(unittest.TestCase):
             self.assertEqual(path.read_text(), 'other\n')
 
     def test_write_answers_file(self):
+        """Name and populate a dated answers file."""
         with tempfile.TemporaryDirectory() as directory:
             path = extractor.write_answers_file(
                 extractor.puzzle_from_dict(TODAY), Path(directory),
@@ -183,7 +200,10 @@ class ExtractorTests(unittest.TestCase):
             self.assertEqual(path.read_text(), '\n'.join(TODAY['answers']) + '\n')
 
     def test_fetch_html(self):
+        """Decode HTTP content using its declared charset or UTF-8."""
         class Response:
+            """Mimic a context-managed HTTP response for fetch tests."""
+
             def __init__(self, data, charset):
                 self.data = data
                 self.headers = Mock()
@@ -196,6 +216,7 @@ class ExtractorTests(unittest.TestCase):
                 return False
 
             def read(self):
+                """Return the encoded response content."""
                 return self.data
 
         for data, charset, expected in [
@@ -215,6 +236,7 @@ class ExtractorTests(unittest.TestCase):
                 self.assertEqual(urlopen.call_args.kwargs['timeout'], 7)
 
     def test_fetch_html_errors(self):
+        """Translate HTTP, network, and timeout failures to fetch errors."""
         errors = [
             (HTTPError('https://example.test', 403, 'Forbidden', None, None), '403'),
             (URLError('dns'), 'dns'),
@@ -230,6 +252,7 @@ class ExtractorTests(unittest.TestCase):
                 error.close()
 
     def test_load_game_data(self):
+        """Prefer local HTML and fetch from the URL when no file is given."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'page.html'
             path.write_text(page_html())
@@ -244,6 +267,8 @@ class ExtractorTests(unittest.TestCase):
 
 
 class FetchAnswersTests(unittest.TestCase):
+    """Check answer-fetch CLI output, file writes, and errors."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -253,6 +278,7 @@ class FetchAnswersTests(unittest.TestCase):
         self.data = self.root / 'data'
 
     def run_main(self, *args):
+        """Run the fetch command against temporary HTML and output paths."""
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
             code = fetch_sb_answers.main([
@@ -261,6 +287,7 @@ class FetchAnswersTests(unittest.TestCase):
         return code, stdout.getvalue()
 
     def test_list(self):
+        """List available dates in order without creating files."""
         code, output = self.run_main('--list')
         self.assertEqual(code, 0)
         positions = [output.index(date) for date in (
@@ -270,12 +297,14 @@ class FetchAnswersTests(unittest.TestCase):
         self.assertFalse(self.data.exists())
 
     def test_stdout(self):
+        """Print selected puzzle answers without writing to disk."""
         code, output = self.run_main('yesterday', '--stdout')
         self.assertEqual(code, 0)
         self.assertEqual(output, 'practical\ncapital\nclap\npita\ntrap\n')
         self.assertFalse(self.data.exists())
 
     def test_write_force_and_identical(self):
+        """Reuse matching files and require force to replace stale answers."""
         code, output = self.run_main()
         self.assertEqual(code, 0)
         path = self.data / 'answers_111426.txt'
@@ -292,6 +321,7 @@ class FetchAnswersTests(unittest.TestCase):
         self.assertEqual(path.read_text(), expected)
 
     def test_cli_errors(self):
+        """Render selection and fetch errors to stderr with a failing code."""
         stderr = io.StringIO()
         argv = [
             'fetch', 'tomorrow', '--html', str(self.html),
@@ -313,6 +343,8 @@ class FetchAnswersTests(unittest.TestCase):
 
 
 class AutoTests(unittest.TestCase):
+    """Check the automated workflow and its pruner integration."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -333,18 +365,21 @@ class AutoTests(unittest.TestCase):
         ]
 
     def run_main(self, *args):
+        """Run the auto command against the temporary puzzle and dictionary."""
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
             code = auto.main([*self.common, *args])
         return code, stdout.getvalue()
 
     def test_generate_candidates(self):
+        """Select dictionary words compatible with the puzzle letters."""
         self.assertEqual(
             auto.generate_candidates(extractor.puzzle_from_dict(TODAY), self.dictionary),
             ['ghee', 'heel', 'heeling', 'hhhh', 'hill', 'hinge', 'when', 'while'],
         )
 
     def test_no_pruner(self):
+        """Write dated answers, candidates, and fakes without pruning."""
         code, output = self.run_main('--no-pruner')
         self.assertEqual(code, 0)
         self.assertEqual(
@@ -362,6 +397,7 @@ class AutoTests(unittest.TestCase):
         self.assertIn('Next dry-run command', output)
 
     def test_pruner_dry_run(self):
+        """Preview pruning by default without changing the dictionary."""
         code, output = self.run_main()
         self.assertEqual(code, 0)
         self.assertIn('Dry-run mode', output)
@@ -369,6 +405,7 @@ class AutoTests(unittest.TestCase):
         self.assertEqual(list(self.root.glob('words.txt.bak-*')), [])
 
     def test_apply_with_and_without_backup(self):
+        """Apply dictionary changes with a backup unless disabled."""
         expected = {
             'ghee', 'heel', 'hill', 'hinge', 'when', 'while', 'wheeling',
             'zebra', 'glen', 'gel',
@@ -389,6 +426,7 @@ class AutoTests(unittest.TestCase):
         self.assertEqual(list(self.root.glob('words.txt.bak-*')), [])
 
     def test_no_remove_and_no_add(self):
+        """Honor flags that separately disable removals and additions."""
         cases = [
             (['--apply', '--yes', '--no-remove'], self.original_words | {'wheeling'}),
             (['--apply', '--yes', '--no-add'], self.original_words - {'hhhh', 'heeling'}),
@@ -403,11 +441,13 @@ class AutoTests(unittest.TestCase):
                 self.assertEqual(pruner.read_words(self.dictionary), expected)
 
     def test_apply_requires_pruner_before_writes(self):
+        """Reject applying with pruning disabled before writing files."""
         with self.assertRaises(ValueError):
             self.run_main('--apply', '--no-pruner')
         self.assertFalse(self.data.exists())
 
     def test_existing_fakes_requires_force(self):
+        """Refuse to overwrite stale fake-word output without force."""
         self.data.mkdir()
         path = self.data / 'fakes_111426.txt'
         path.write_text('stale\n')
@@ -418,11 +458,13 @@ class AutoTests(unittest.TestCase):
         self.assertEqual(path.read_text(), 'heeling\nhhhh\n')
 
     def test_show_limit(self):
+        """Limit the fake-word preview to the requested count."""
         code, output = self.run_main('--no-pruner', '--show', '1')
         self.assertEqual(code, 0)
         self.assertIn('... and 1 more', output)
 
     def test_run_pruner_argv(self):
+        """Forward only the selected command flags to the pruner."""
         puzzle = extractor.puzzle_from_dict(TODAY)
         cases = [
             (
@@ -460,6 +502,7 @@ class AutoTests(unittest.TestCase):
                     self.assertNotIn(item, argv)
 
     def test_cli_error(self):
+        """Report conflicting auto flags on stderr."""
         stderr = io.StringIO()
         argv = [
             'auto', '--apply', '--no-pruner', '--html', str(self.html),

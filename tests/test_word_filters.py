@@ -1,3 +1,5 @@
+"""Tests for Spelling Bee and Wordle filters and command-line tools."""
+
 import contextlib
 import io
 import tempfile
@@ -10,11 +12,14 @@ import wordle
 
 
 class SpellingBeeTests(unittest.TestCase):
+    """Check Spelling Bee filtering, dictionary loading, and CLI behavior."""
+
     def setUp(self):
         self.words = {'ghee', 'heel', 'hill', 'wheeling', 'glen', 'hen', 'zebra', 'hhhh'}
         self.allowed = set('eghilnw')
 
     def test_filter_words(self):
+        """Require the center letter, allowed letters, and minimum word length."""
         for minimum, expected in [
             (4, ['ghee', 'heel', 'hhhh', 'hill', 'wheeling']),
             (3, ['ghee', 'heel', 'hen', 'hhhh', 'hill', 'wheeling']),
@@ -28,6 +33,7 @@ class SpellingBeeTests(unittest.TestCase):
                 )
 
     def test_load_words(self):
+        """Normalize word lists and reject missing dictionaries for both tools."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'words.txt'
             path.write_text('Ghee\n  heel \n\nHILL\nghee\n')
@@ -38,6 +44,7 @@ class SpellingBeeTests(unittest.TestCase):
                         module.load_words(Path(directory) / 'missing')
 
     def test_main_output_and_file(self):
+        """Print matching words and optionally save them to a file."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'words.txt'
             output = Path(directory) / 'out.txt'
@@ -55,6 +62,7 @@ class SpellingBeeTests(unittest.TestCase):
             self.assertEqual(output.read_text(), 'ghee\nheel\nhill\nwheeling\n')
 
     def test_main_minimum_length(self):
+        """Include shorter words when the minimum length is lowered."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'words.txt'
             path.write_text('Ghee\nheel\nHILL\nwheeling\nglen\nhen\nzebra\n')
@@ -69,6 +77,7 @@ class SpellingBeeTests(unittest.TestCase):
             self.assertIn('\nhen\n', stdout.getvalue())
 
     def test_main_errors(self):
+        """Reject invalid center letters, output paths, and dictionaries."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'words.txt'
             path.write_text('ghee\n')
@@ -86,10 +95,13 @@ class SpellingBeeTests(unittest.TestCase):
 
 
 class WordleTests(unittest.TestCase):
+    """Check Wordle filter combinations and CLI input validation."""
+
     def setUp(self):
         self.words = ['tacit', 'tarot', 'taunt', 'toast', 'treat', 'stats', 'cabin', 'tilt']
 
     def test_filter_words(self):
+        """Combine length, position, included, and excluded letter filters."""
         cases = [
             ({'word_length': 5}, sorted(set(self.words) - {'tilt'})),
             ({}, sorted(self.words)),
@@ -106,12 +118,14 @@ class WordleTests(unittest.TestCase):
                 self.assertEqual(wordle.filter_words(self.words, **kwargs), expected)
 
     def test_positions_past_end_are_ignored(self):
+        """Ignore position constraints beyond the end of a word."""
         self.assertEqual(
             wordle.filter_words(['ab', 'abc'], specific_positions={2: 'c'}),
             ['ab', 'abc'],
         )
 
     def test_generator_and_empty_iterable(self):
+        """Handle generator inputs and empty iterables."""
         self.assertEqual(
             wordle.filter_words((word for word in self.words), word_length=4),
             ['tilt'],
@@ -119,6 +133,7 @@ class WordleTests(unittest.TestCase):
         self.assertEqual(wordle.filter_words([]), [])
 
     def test_main(self):
+        """Print filtered results or an explicit no-match message."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'words.txt'
             path.write_text('Tacit\ntarot\ntaunt\ntoast\ntreat\nstats\ncabin\ntilt\n')
@@ -138,6 +153,7 @@ class WordleTests(unittest.TestCase):
                     self.assertEqual(stdout.getvalue(), expected)
 
     def test_main_invalid_positions_and_missing_dictionary(self):
+        """Reject malformed positions and missing dictionaries."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'words.txt'
             path.write_text('tacit\n')

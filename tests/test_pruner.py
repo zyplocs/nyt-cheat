@@ -1,3 +1,5 @@
+"""Tests for dictionary-pruning helpers and command-line behavior."""
+
 import contextlib
 import io
 import stat
@@ -12,7 +14,10 @@ from prune import pruner
 
 
 class PrunerFunctionTests(unittest.TestCase):
+    """Check answer parsing, dictionary I/O, and pruner helpers."""
+
     def test_parse_answers_str(self):
+        """Normalize answer formats while rejecting malformed tables."""
         cases = [
             ('["Ghee","hell"]', {'ghee', 'hell'}),
             ('"ghee"', {'ghee'}),
@@ -31,10 +36,12 @@ class PrunerFunctionTests(unittest.TestCase):
             pruner.parse_answers_str('GHEE 5')
 
     def test_parse_json_literals_as_words(self):
+        """Treat bare JSON keywords as literal candidate words."""
         self.assertEqual(pruner.parse_answers_str('true'), {'true'})
         self.assertEqual(pruner.parse_answers_str('null'), {'null'})
 
     def test_read_words(self):
+        """Normalize word files and report missing or undecodable files."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = root / 'words.txt'
@@ -48,6 +55,7 @@ class PrunerFunctionTests(unittest.TestCase):
                 pruner.read_words(invalid)
 
     def test_load_system_words(self):
+        """Load system words while tolerating absent optional sources."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = root / 'system.txt'
@@ -57,6 +65,7 @@ class PrunerFunctionTests(unittest.TestCase):
             self.assertEqual(pruner.load_system_words(path), {'ghee', 'heel'})
 
     def test_preview(self):
+        """Show sorted, bounded preview entries and handle an empty set."""
         stdout = io.StringIO()
         with contextlib.redirect_stdout(stdout):
             pruner.preview('Add', {'b', 'a', 'c'}, 2)
@@ -67,6 +76,7 @@ class PrunerFunctionTests(unittest.TestCase):
         self.assertEqual(stdout.getvalue(), '\nAdd: 0\n')
 
     def test_compute_changes(self):
+        """Keep official answers while removing only present fake words."""
         self.assertEqual(
             pruner.compute_changes(
                 {'ghee', 'hhhh', 'zebra'},
@@ -77,6 +87,7 @@ class PrunerFunctionTests(unittest.TestCase):
         )
 
     def test_write_words_atomic(self):
+        """Write sorted words atomically with restrictive permissions."""
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'new' / 'w.txt'
             pruner.write_words_atomic(path, {'b', 'a'})
@@ -85,6 +96,7 @@ class PrunerFunctionTests(unittest.TestCase):
             self.assertEqual(list(path.parent.glob('*.tmp')), [])
 
     def test_prompt_user_terminal(self):
+        """Read confirmation from interactive stdin."""
         stdin = Mock()
         stdin.isatty.return_value = True
         with patch.object(pruner.sys, 'stdin', stdin), patch(
@@ -94,6 +106,7 @@ class PrunerFunctionTests(unittest.TestCase):
         user_input.assert_called_once_with('Continue? ')
 
     def test_prompt_user_tty_does_not_consume_stdin(self):
+        """Use the terminal for prompts without consuming piped input."""
         stdin = io.StringIO('piped answers')
         opened = mock_open(read_data='yes\n')
         with patch.object(pruner.sys, 'stdin', stdin), patch(
@@ -109,6 +122,8 @@ class PrunerFunctionTests(unittest.TestCase):
 
 
 class PrunerMainTests(unittest.TestCase):
+    """Exercise pruner CLI previews, updates, and failure handling."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -127,10 +142,12 @@ class PrunerMainTests(unittest.TestCase):
         (self.data / 'fakes_111426.txt').write_bytes(self.fakes.read_bytes())
 
     def run_cli(self, *args, prompt=None, stdin=None):
+        """Invoke the pruner with a mocked prompt and captured output."""
         output = io.StringIO()
         input_stream = io.StringIO(stdin) if stdin is not None else pruner.sys.stdin
         prompt_kwargs = (
-            {'side_effect': prompt} if isinstance(prompt, type) and issubclass(prompt, BaseException)
+            {'side_effect': prompt}
+            if isinstance(prompt, type) and issubclass(prompt, BaseException)
             else {'return_value': prompt}
         )
         with patch.object(pruner, 'prompt_user', **prompt_kwargs), patch.object(
@@ -140,11 +157,13 @@ class PrunerMainTests(unittest.TestCase):
         return code, output.getvalue()
 
     def reset(self):
+        """Restore the temporary dictionary and clear its backups."""
         self.dictionary.write_bytes(self.original)
         for path in self.root.glob('words.txt.bak-*'):
             path.unlink()
 
     def test_dry_run_files_and_date(self):
+        """Preview file and date-based inputs without changing the dictionary."""
         cases = [
             ('--answers', str(self.answers), '--fakes', str(self.fakes)),
             ('--date', '111426', '--data-dir', str(self.data)),
@@ -159,6 +178,7 @@ class PrunerMainTests(unittest.TestCase):
                 self.assertEqual(self.dictionary.read_bytes(), self.original)
 
     def test_invalid_dates_and_missing_dictionary(self):
+        """Reject invalid date tokens and nonexistent dictionaries."""
         for token in ('12345', 'abcdef'):
             with self.subTest(token=token), self.assertRaises(SystemExit) as raised:
                 self.run_cli('--date', token, '--data-dir', str(self.data))
@@ -171,6 +191,7 @@ class PrunerMainTests(unittest.TestCase):
         self.assertIn('dictionary not found', str(raised.exception))
 
     def test_apply_with_and_without_backup(self):
+        """Apply additions and removals with optional backups."""
         expected = {'ghee', 'heel', 'hill', 'wheeling', 'zebra'}
         for backup in (True, False):
             with self.subTest(backup=backup):
@@ -191,6 +212,7 @@ class PrunerMainTests(unittest.TestCase):
                     self.assertEqual(backups[0].read_bytes(), self.original)
 
     def test_prompt_responses(self):
+        """Accept affirmative replies and abort on refusal or EOF."""
         base = [
             '--answers', str(self.answers), '--fakes', str(self.fakes), '--apply',
         ]
@@ -212,6 +234,7 @@ class PrunerMainTests(unittest.TestCase):
                 )
 
     def test_no_add_and_no_remove(self):
+        """Honor flags that disable additions or removals independently."""
         cases = [
             ('--no-add', {'ghee', 'heel', 'hill', 'zebra'}),
             ('--no-remove', self.original_words | {'wheeling'}),
@@ -227,6 +250,7 @@ class PrunerMainTests(unittest.TestCase):
                 self.assertEqual(pruner.read_words(self.dictionary), expected)
 
     def test_conservative(self):
+        """Protect system words and require the configured system dictionary."""
         system = self.root / 'system.txt'
         system.write_text('heeling\n')
         code, output = self.run_cli(
@@ -250,6 +274,7 @@ class PrunerMainTests(unittest.TestCase):
         self.assertEqual(self.dictionary.read_bytes(), self.original)
 
     def test_nothing_to_change(self):
+        """Skip backup and write operations when the diff is empty."""
         code, output = self.run_cli(
             '--answers-str', 'ghee', '--apply', '--yes', '--backup',
         )
@@ -259,6 +284,7 @@ class PrunerMainTests(unittest.TestCase):
         self.assertEqual(self.dictionary.read_bytes(), self.original)
 
     def test_answers_stdin_and_output(self):
+        """Combine piped answers with a file of removal candidates."""
         output_path = self.root / 'output.txt'
         output_path.write_text('8 words found:\nghee\nhhhh\nheeling\nhill\n')
         code, output = self.run_cli(
@@ -273,11 +299,13 @@ class PrunerMainTests(unittest.TestCase):
         )
 
     def test_invalid_answers_table(self):
+        """Exit with an argument error for an invalid answer table."""
         with self.assertRaises(SystemExit) as raised:
             self.run_cli('--answers-str', 'GHEE 5')
         self.assertEqual(raised.exception.code, 2)
 
     def test_script_mode_parses_answer_tables(self):
+        """Parse answer tables when running the pruner as a script."""
         result = subprocess.run(
             [sys.executable, pruner.__file__, '--dict', str(self.dictionary),
              '--answers-str', 'GHEE 4\nWHEELING 8 pangram'],
@@ -289,6 +317,7 @@ class PrunerMainTests(unittest.TestCase):
         self.assertEqual(self.dictionary.read_bytes(), self.original)
 
     def test_show_limit(self):
+        """Bound the number of previewed removals."""
         code, output = self.run_cli(
             '--answers', str(self.answers), '--fakes', str(self.fakes), '--show', '1',
         )
@@ -296,6 +325,7 @@ class PrunerMainTests(unittest.TestCase):
         self.assertIn('... and 1 more', output)
 
     def test_answers_str_precedence(self):
+        """Prefer inline answers when an answers file is also supplied."""
         code, output = self.run_cli(
             '--answers-str', 'ghee', '--answers', str(self.answers),
         )

@@ -1,3 +1,5 @@
+"""Tests for parsing and transforming pasted Spelling Bee answer tables."""
+
 import contextlib
 import io
 import json
@@ -8,7 +10,10 @@ from prune import transform_text
 
 
 class TransformTextTests(unittest.TestCase):
+    """Check input selection, CLI output, and answer-table parsing."""
+
     def test_get_input_text(self):
+        """Prefer piped input, fall back to pasted text, and reject empty input."""
         with patch.object(transform_text.sys, 'stdin', io.StringIO('  GHEE 4\n')):
             self.assertEqual(transform_text.get_input_text(), 'GHEE 4')
         with patch.object(transform_text.sys, 'stdin', io.StringIO('')), patch.object(
@@ -29,6 +34,7 @@ class TransformTextTests(unittest.TestCase):
             transform_text.get_input_text()
 
     def test_main(self):
+        """Put pangrams first in JSON output and report invalid tables."""
         stdout = io.StringIO()
         with patch.object(
             transform_text.sys, 'stdin',
@@ -43,6 +49,7 @@ class TransformTextTests(unittest.TestCase):
         self.assertTrue(str(raised.exception).startswith('Error:'))
 
     def test_parse_answer_table_extras(self):
+        """Accept quoted tables with blank lines and optional row metadata."""
         table = transform_text.parse_answer_table(
             "'ghee\n\n  Hill 4  \nWHEELING pangram'",
         )

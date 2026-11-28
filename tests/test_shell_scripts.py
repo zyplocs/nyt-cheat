@@ -1,3 +1,5 @@
+"""Tests for fake-word derivation and batch-pruning shell scripts."""
+
 import shutil
 import subprocess
 import tempfile
@@ -13,6 +15,8 @@ BASH = shutil.which('bash')
 
 @unittest.skipUnless(BASH, 'bash not available')
 class ShellScriptTests(unittest.TestCase):
+    """Check shell script validation and safe dictionary updates."""
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -23,12 +27,14 @@ class ShellScriptTests(unittest.TestCase):
         self.original = self.dictionary.read_bytes()
 
     def run_script(self, script, *args):
+        """Run a shell script and capture its exit status and output."""
         return subprocess.run(
             ['bash', str(script), *args],
             capture_output=True, text=True, check=False,
         )
 
     def test_derive_fakes(self):
+        """Write sorted, unique candidates absent from official answers."""
         (self.data / 'output_111426.txt').write_text('ghee\nzebra\nhhhh\nghee\n')
         (self.data / 'answers_111426.txt').write_text('ghee\n')
         result = self.run_script(
@@ -42,6 +48,7 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn('2 candidate fakes', result.stdout)
 
     def test_derive_invalid_dates(self):
+        """Reject missing or malformed six-digit date arguments."""
         for args in [
             ('--data-dir', str(self.data), '12345'),
             ('--data-dir', str(self.data), 'abcdef'),
@@ -51,6 +58,7 @@ class ShellScriptTests(unittest.TestCase):
                 self.assertEqual(self.run_script(DERIVE, *args).returncode, 2)
 
     def test_derive_missing_files(self):
+        """Avoid creating fake-word output if either input file is absent."""
         cases = [
             ('answers_111426.txt', 'output_111426.txt'),
             ('output_111426.txt', 'answers_111426.txt'),
@@ -67,6 +75,7 @@ class ShellScriptTests(unittest.TestCase):
                 self.assertFalse((self.data / 'fakes_111426.txt').exists())
 
     def test_batch_unknown_argument(self):
+        """Return an argument error for unsupported batch options."""
         result = self.run_script(
             BATCH, '--data-dir', str(self.data), '--dict',
             str(self.dictionary), '--bogus',
@@ -74,11 +83,13 @@ class ShellScriptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
 
     def prepare_batch(self):
+        """Create one complete puzzle and one missing-output puzzle."""
         (self.data / 'answers_111426.txt').write_text('ghee\nwheeling\n')
         (self.data / 'output_111426.txt').write_text('ghee\nhhhh\n')
         (self.data / 'answers_111326.txt').write_text('ghee\n')
 
     def test_batch_dry_run(self):
+        """Process only complete puzzles without changing the dictionary."""
         self.prepare_batch()
         result = self.run_script(
             BATCH, '--data-dir', str(self.data), '--dict', str(self.dictionary),
@@ -91,6 +102,7 @@ class ShellScriptTests(unittest.TestCase):
         self.assertEqual(self.dictionary.read_bytes(), self.original)
 
     def test_batch_apply(self):
+        """Update the dictionary when batch pruning is explicitly applied."""
         self.prepare_batch()
         result = self.run_script(
             BATCH, '--data-dir', str(self.data), '--dict', str(self.dictionary),
@@ -103,6 +115,7 @@ class ShellScriptTests(unittest.TestCase):
         )
 
     def test_batch_empty_data_directory(self):
+        """Report an empty data directory without failing."""
         result = self.run_script(
             BATCH, '--data-dir', str(self.data), '--dict', str(self.dictionary),
         )

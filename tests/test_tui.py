@@ -1,3 +1,5 @@
+"""Tests for the Wordle and Spelling Bee curses interfaces."""
+
 import curses
 import tempfile
 import unittest
@@ -12,6 +14,8 @@ import tui_wordle
 
 
 class FakeScreen:
+    """Record curses writes and supply scripted input without a terminal."""
+
     def __init__(self, keys=(), lines=(), size=(24, 80)):
         self.keys, self.lines, self.size, self.writes = iter(keys), iter(lines), size, []
 
@@ -22,39 +26,45 @@ class FakeScreen:
         return item
 
     def getch(self):
+        """Read the next scripted key as a curses key code."""
         key = self._next(self.keys)
         return ord(key) if isinstance(key, str) else key
 
     def getstr(self):
+        """Read the next scripted input line."""
         return self._next(self.lines)
 
     def getmaxyx(self):
+        """Return the simulated terminal dimensions."""
         return self.size
 
     def addstr(self, y, x, text, attr=0):
+        """Clip writes at the right edge and reject invalid positions."""
         rows, cols = self.size
         if not (0 <= y < rows and 0 <= x < cols):
             raise curses.error('addstr out of bounds')
         self.writes.append((y, x, text[:cols - x], attr))
 
     def erase(self):
+        """Discard recorded screen writes."""
         self.writes.clear()
 
     clear = erase
 
     def refresh(self):
-        pass
+        """Ignore refresh requests on the in-memory screen."""
 
     def keypad(self, flag):
-        pass
+        """Accept keypad configuration without changing scripted input."""
 
     def nodelay(self, flag):
-        pass
+        """Accept nonblocking mode changes without a real terminal."""
 
     def clrtoeol(self):
-        pass
+        """Accept clear-to-end-of-line calls without a real terminal."""
 
     def row(self, y):
+        """Reconstruct a visible row from recorded writes."""
         cells = {}
         for wy, x, text, _ in self.writes:
             if wy == y:
@@ -62,10 +72,12 @@ class FakeScreen:
         return ''.join(cells.get(i, ' ') for i in range(max(cells, default=-1) + 1))
 
     def attr_of(self, text):
+        """Find the rendering attribute used for the exact text."""
         return next(attr for _, _, written, attr in self.writes if written == text)
 
 
 def run_tui(module, screen):
+    """Run a TUI against a fake screen with terminal calls stubbed."""
     with patch.multiple(
         curses, curs_set=DEFAULT, mousemask=DEFAULT, echo=DEFAULT, noecho=DEFAULT,
     ), patch.object(curses, 'has_colors', return_value=False):
@@ -73,7 +85,10 @@ def run_tui(module, screen):
 
 
 class FieldTests(unittest.TestCase):
+    """Check field input constraints and rendering in both TUIs."""
+
     def test_wordle_field_validation(self):
+        """Constrain numeric, pattern, include, and exclude field edits."""
         field = tui_wordle.Field('x', 0, 5, '', 'length')
         self.assertTrue(field.add_char('2'))
         self.assertFalse(field.add_char('a'))
@@ -110,6 +125,7 @@ class FieldTests(unittest.TestCase):
         self.assertEqual(field.value, '')
 
     def test_spelling_bee_field_validation(self):
+        """Constrain letter, required-letter, and minimum-length fields."""
         field = tui_spelling_bee.Field('x', 0, 5, '', 'letters')
         self.assertTrue(field.add_char('a'))
         self.assertFalse(field.add_char('A'))
@@ -129,12 +145,14 @@ class FieldTests(unittest.TestCase):
         self.assertEqual(field.value, '12')
 
     def test_is_pangram(self):
+        """Require every allowed letter without permitting extra letters."""
         allowed = set('eghilnw')
         self.assertTrue(tui_spelling_bee.is_pangram('wheeling', allowed))
         self.assertFalse(tui_spelling_bee.is_pangram('heel', allowed))
         self.assertFalse(tui_spelling_bee.is_pangram('wheelings', allowed))
 
     def test_field_render(self):
+        """Render focus states and handle clipped or off-screen writes."""
         palette = {'normal': 1, 'focus': 2, 'editing': 4}
         for module in (tui_wordle, tui_spelling_bee):
             with self.subTest(module=module.__name__):
@@ -164,7 +182,10 @@ class FieldTests(unittest.TestCase):
 
 
 class ColorTests(unittest.TestCase):
+    """Check curses palette setup and fallback behavior in both TUIs."""
+
     def test_no_colors(self):
+        """Use monochrome attributes when colors are unavailable."""
         for module in (tui_wordle, tui_spelling_bee):
             with self.subTest(module=module.__name__), patch.object(
                 curses, 'has_colors', return_value=False,
@@ -174,6 +195,7 @@ class ColorTests(unittest.TestCase):
                 start.assert_not_called()
 
     def test_colors(self):
+        """Configure color pairs and editing attributes when supported."""
         for module in (tui_wordle, tui_spelling_bee):
             with self.subTest(module=module.__name__), patch.object(
                 curses, 'has_colors', return_value=True,
@@ -195,6 +217,7 @@ class ColorTests(unittest.TestCase):
                 self.assertTrue(all(call.args[2] == -1 for call in init_pair.call_args_list))
 
     def test_default_color_failure(self):
+        """Fall back to black backgrounds if default colors fail."""
         for module in (tui_wordle, tui_spelling_bee):
             with self.subTest(module=module.__name__), patch.object(
                 curses, 'has_colors', return_value=True,
@@ -209,6 +232,7 @@ class ColorTests(unittest.TestCase):
                 )
 
     def test_start_color_failure(self):
+        """Use monochrome help styling if color initialization fails."""
         for module in (tui_wordle, tui_spelling_bee):
             with self.subTest(module=module.__name__), patch.object(
                 curses, 'has_colors', return_value=True,
@@ -219,6 +243,8 @@ class ColorTests(unittest.TestCase):
 
 
 class WordleTuiTests(unittest.TestCase):
+    """Drive the Wordle interface with scripted keys and small dictionaries."""
+
     WORDS = 'cabin\nHELLO\nquiet\nstats\ntacit\ntarot\ntaunt\ntilt\ntoast\nTREAT\n'
     EMPTY = [b'', b'', b'', b'']
 
@@ -229,6 +255,7 @@ class WordleTuiTests(unittest.TestCase):
         self.path.write_text(self.WORDS)
 
     def run_case(self, keys, lines=None, size=(24, 80), path=None):
+        """Run Wordle with scripted input and return its recorded screen."""
         screen = FakeScreen(
             keys=keys, lines=self.EMPTY if lines is None else lines, size=size,
         )
@@ -237,6 +264,7 @@ class WordleTuiTests(unittest.TestCase):
         return screen
 
     def test_initial_results(self):
+        """Show sorted initial candidates and the help bar."""
         screen = self.run_case(['q'])
         self.assertEqual(screen.row(3), '9 candidates found')
         self.assertEqual(screen.row(4).strip(), 'cabin')
@@ -244,6 +272,7 @@ class WordleTuiTests(unittest.TestCase):
         self.assertTrue(screen.row(0).startswith(tui_wordle.HELP_BAR))
 
     def test_initial_filters(self):
+        """Apply prompted filters before showing candidate words."""
         screen = self.run_case(
             ['q'], [b'5', b'T___T', b'A', b'S'],
         )
@@ -255,6 +284,7 @@ class WordleTuiTests(unittest.TestCase):
         self.assertIn('Pattern: t___t', screen.row(2))
 
     def test_initial_errors(self):
+        """Show filter-validation errors without listing candidates."""
         cases = [
             (
                 [b'5', b't_t', b'', b''],
@@ -272,6 +302,7 @@ class WordleTuiTests(unittest.TestCase):
                 self.assertFalse(any('candidates found' in screen.row(row) for row in range(24)))
 
     def test_prompt_initial_params(self):
+        """Clamp and normalize prompted Wordle filters."""
         cases = [
             ([b'99', b'', b'', b''], (20, '', '', '')),
             ([b'0', b'', b'', b''], (1, '', '', '')),
@@ -288,16 +319,19 @@ class WordleTuiTests(unittest.TestCase):
                 )
 
     def test_typing_pattern(self):
+        """Apply typed pattern edits while ignoring invalid characters."""
         screen = self.run_case([9, ' ', 't', '_', '_', '5', '_', 't', 10, 10, 'q'])
         self.assertIn('Pattern: t___t', screen.row(2))
         self.assertEqual(screen.row(3), '5 candidates found')
 
     def test_q_is_text_while_editing(self):
+        """Treat q as filter text instead of quitting during editing."""
         screen = self.run_case([9, 9, ' ', 'q', 27, 10, 'q'])
         self.assertEqual(screen.row(3), '1 candidates found')
         self.assertEqual(screen.row(4).strip(), 'quiet')
 
     def test_enter_while_editing_only_exits_edit_mode(self):
+        """Require another Enter to apply edits after leaving edit mode."""
         cases = [
             ([' ', 127, '4', 10, 'q'], '9 candidates found', None),
             ([' ', 127, '4', 10, 10, 'q'], '1 candidates found', 'tilt'),
@@ -311,19 +345,23 @@ class WordleTuiTests(unittest.TestCase):
                     self.assertEqual(screen.row(4).strip(), word)
 
     def test_delete_clears(self):
+        """Clear an edited filter with Delete and restore all candidates."""
         screen = self.run_case([9, ' ', 'x', 'y', curses.KEY_DC, 10, 10, 'q'])
         self.assertEqual(screen.row(3), '9 candidates found')
 
     def test_editing_badge_and_interrupt(self):
+        """Show the editing badge before handling a keyboard interrupt."""
         screen = self.run_case([' ', KeyboardInterrupt()])
         self.assertIn('[EDITING - Esc to exit]', screen.row(0))
 
     def test_quitting_and_transient_curses_error(self):
+        """Quit cleanly after Escape or a transient curses read error."""
         for keys in ([27], [curses.error('x'), 'q']):
             with self.subTest(keys=keys):
                 self.run_case(keys)
 
     def test_scrolling(self):
+        """Scroll results with letter and page keys, updating indicators."""
         cases = [
             (['q'], ['cabin', None, None], False, True),
             (['j', 'j', 'q'], ['quiet', 'stats', 'tacit'], True, True),
@@ -344,9 +382,11 @@ class WordleTuiTests(unittest.TestCase):
                 self.assertEqual('↓' in screen.row(6), down)
 
     def test_tiny_terminal(self):
+        """Render without error on a terminal too small for results."""
         self.run_case(['q'], lines=[], size=(2, 10))
 
     def test_unusable_dictionary(self):
+        """Stop before reading keys when the word list is empty."""
         empty = Path(self.temp.name) / 'empty.txt'
         empty.write_text('')
         screen = self.run_case(['x'], lines=[], path=empty)
@@ -354,21 +394,26 @@ class WordleTuiTests(unittest.TestCase):
         self.assertIsNone(next(screen.keys, None))
 
     def test_missing_dictionary_shows_error(self):
+        """Show a load error for a nonexistent dictionary."""
         screen = self.run_case(
             ['x'], lines=[], path=Path(self.temp.name) / 'missing',
         )
         self.assertTrue(screen.row(0).startswith('Error: Could not load word list'))
 
     def test_safe_load_words_missing_file(self):
+        """Return an empty set when safe word loading fails."""
         with patch.object(tui_wordle, 'DATASET_PATH', Path(self.temp.name) / 'missing'):
             self.assertEqual(tui_wordle.safe_load_words(), set())
 
 
 class SpellingBeeTuiTests(unittest.TestCase):
+    """Drive the Spelling Bee interface with scripted key sequences."""
+
     START = list('eghilnw') + [10, 'h', 10, 10]
     WORDS = {'ghee', 'heel', 'hill', 'wheeling', 'glen', 'hen', 'zebra', 'hinge'}
 
     def run_case(self, keys, words=None, size=(24, 80)):
+        """Run Spelling Bee with scripted keys and return the fake screen."""
         screen = FakeScreen(keys=keys, size=size)
         with patch.object(
             tui_spelling_bee, 'WORDS', self.WORDS if words is None else words,
@@ -377,6 +422,7 @@ class SpellingBeeTuiTests(unittest.TestCase):
         return screen
 
     def test_initial_results(self):
+        """List matching words and visually distinguish pangrams."""
         screen = self.run_case(self.START + ['q'])
         self.assertEqual(screen.row(3), '5 candidates found')
         expected = ['ghee', 'heel', 'hill', 'hinge', 'wheeling']
@@ -392,6 +438,7 @@ class SpellingBeeTuiTests(unittest.TestCase):
         self.assertEqual(screen.attr_of('ghee'), curses.A_NORMAL)
 
     def test_defaults(self):
+        """Use default puzzle settings when initial prompts are blank."""
         words = {'tilt', 'dial', 'mint', 'lid'}
         screen = self.run_case([10, 10, 10, 'q'], words)
         self.assertEqual(screen.row(3), '2 candidates found')
@@ -402,6 +449,7 @@ class SpellingBeeTuiTests(unittest.TestCase):
         self.assertIn('Letters (7)  Required (l)  MinLen (4)', screen.row(0))
 
     def test_prompt_initial_params(self):
+        """Normalize letter input and handle defaults in initial prompts."""
         cases = [
             (
                 ['a', 'A', '1', 'b', 127, 'c', 10, 'Z', 10, '7', 10],
@@ -417,24 +465,29 @@ class SpellingBeeTuiTests(unittest.TestCase):
                 )
 
     def test_edit_minimum_length(self):
+        """Recompute candidates after increasing the minimum length."""
         screen = self.run_case(self.START + [9, 9, ' ', 127, '6', 10, 10, 'q'])
         self.assertEqual(screen.row(3), '1 candidates found')
         self.assertEqual(screen.row(4).strip(), 'wheeling')
 
     def test_empty_minimum_length(self):
+        """Disable minimum-length filtering when its field is cleared."""
         screen = self.run_case(self.START + [9, 9, ' ', 127, 10, 10, 'q'])
         self.assertEqual(screen.row(3), '6 candidates found')
         self.assertIn('MinLen (-)', screen.row(0))
 
     def test_q_is_text_while_editing(self):
+        """Enter q as a letter instead of quitting during editing."""
         screen = self.run_case(self.START + [' ', 'q', 27, 'q'])
         self.assertIn('Letters (8)', screen.row(0))
 
     def test_tab_wraps(self):
+        """Wrap focus across fields when tabbing past the last field."""
         screen = self.run_case(self.START + [9, 9, 9, ' ', 'z', 27, 'q'])
         self.assertIn('Letters (8)', screen.row(0))
 
     def test_scrolling(self):
+        """Scroll candidate words and update pagination indicators."""
         cases = [
             (['q'], 'ghee', None, True),
             (['j', 'j', 'q'], 'hill', True, None),
