@@ -15,6 +15,8 @@ PASTED_TEXT = """
 
 @dataclass(frozen=True)
 class AnswerTable:
+    """Validated answers in source order, plus the subset labelled as pangrams."""
+
     words: tuple[str, ...]
     pangrams: frozenset[str]
 
@@ -38,11 +40,16 @@ def parse_answer_table(text: str) -> AnswerTable:
             line, re.IGNORECASE | re.ASCII,
         )
         if not match:
-            raise ValueError(f"Line {number}: expected a word, optional length, and optional 'pangram' or 'perfect pangram' label.")
+            raise ValueError(
+                f"Line {number}: expected a word, optional length, "
+                "and optional 'pangram' or 'perfect pangram' label."
+            )
         word, length, marker = match.groups()
         word = word.lower()
         if length is not None and int(length) != len(word):
-            raise ValueError(f"Line {number}: {word.upper()} has {len(word)} letters, not {length}.")
+            raise ValueError(
+                f"Line {number}: {word.upper()} has {len(word)} letters, not {length}."
+            )
         if word in seen:
             raise ValueError(f"Line {number}: duplicate answer {word.upper()}.")
         seen.add(word)
