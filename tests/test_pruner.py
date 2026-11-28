@@ -281,7 +281,7 @@ class PrunerMainTests(unittest.TestCase):
         result = subprocess.run(
             [sys.executable, pruner.__file__, '--dict', str(self.dictionary),
              '--answers-str', 'GHEE 4\nWHEELING 8 pangram'],
-            capture_output=True, text=True,
+            capture_output=True, text=True, check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('True answers provided  : 2', result.stdout)

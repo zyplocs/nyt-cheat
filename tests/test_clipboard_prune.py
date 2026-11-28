@@ -1,10 +1,10 @@
 import contextlib
 import io
-import os
 import stat
 import subprocess
 import tempfile
 import unittest
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from unittest.mock import patch
 
@@ -12,10 +12,10 @@ from prune import clipboard, pruner
 from prune.transform_text import parse_answer_table, parse_word_block
 
 
-H_WORDS = """ghee heel heeling heinie hell henge hewing hewn high hill hilling hinge
+H_WORDS: Sequence[str] = """ghee heel heeling heinie hell henge hewing hewn high hill hilling hinge
 hinging neigh neighing nigh weigh weighing whee wheel wheelie wheeling when whew
 while whiling whine whinge whingeing whinging whining""".split()
-P_WORDS = """alpaca apart appall apparat capital capri carp carpal carpi catalpa clap
+P_WORDS: Sequence[str] = """alpaca apart appall apparat capital capri carp carpal carpi catalpa clap
 claptrap clip crap pact pail pair palapa palatal palatial pall palp papa papal papilla
 part partial partita pica piccata pill pillar pipit piratic pita pitapat plait plat
 practical prat priapic rapt rattrap tapa tapir tarp tilapia tipi trap trip""".split()
@@ -96,7 +96,8 @@ class WorkflowTests(unittest.TestCase):
         self.dictionary.chmod(0o640)
         self.original = self.dictionary.read_bytes()
 
-    def run_cli(self, *args, text=H_TABLE, response='n'):
+    def run_cli(self, *args, text=H_TABLE,
+                response: str | Callable[[str], str] | type[BaseException] = 'n'):
         out = io.StringIO()
         with patch.object(clipboard, 'read_clipboard', return_value=text) as read:
             with patch.object(pruner, 'prompt_user', side_effect=response if callable(response) else None,
@@ -188,7 +189,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(pruner.read_words(self.dictionary), set(H_WORDS) | {'hhhh', 'zebra'})
 
     def test_changed_dictionary_requires_new_preview(self):
-        def change_during_review(message):
+        def change_during_review(_):
             self.dictionary.write_bytes(self.original + b'newword\n')
             return 'y'
         code, output, _ = self.run_cli(response=change_during_review)

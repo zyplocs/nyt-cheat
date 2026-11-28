@@ -118,5 +118,8 @@ cython_debug/
 .DS_Store
 .vscode/
 
+# Annoying forced document
+AGENTS.md
+
 # Prune data module
 prune/data/

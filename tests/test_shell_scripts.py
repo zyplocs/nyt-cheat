@@ -25,7 +25,7 @@ class ShellScriptTests(unittest.TestCase):
     def run_script(self, script, *args):
         return subprocess.run(
             ['bash', str(script), *args],
-            capture_output=True, text=True,
+            capture_output=True, text=True, check=False,
         )
 
     def test_derive_fakes(self):
