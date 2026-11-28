@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Preview or apply dictionary changes using official answers and candidate fakes."""
+
 import argparse
 import json
 import os
@@ -11,6 +13,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterable, Set, Optional, List
 
+if __package__:
+    from .transform_text import parse_word_block
+else:
+    from transform_text import parse_word_block  # pylint: disable=import-error
+
 
 PRUNE_DIR = Path(__file__).resolve().parent
 DEFAULT_DICT = (PRUNE_DIR.parent / "english-words" / "words_alpha.txt").resolve()
@@ -18,6 +25,7 @@ DEFAULT_SYSTEM_DICT = Path("/usr/share/dict/words")
 
 
 def read_words(path: Path) -> Set[str]:
+    """Read lowercase words from a UTF-8 file, exiting on read errors."""
     if not path.exists():
         sys.exit(f"Error: file not found: {path}")
     try:
@@ -28,13 +36,14 @@ def read_words(path: Path) -> Set[str]:
 
 
 def parse_answers_str(s: str) -> Set[str]:
+    """Parse JSON, plain text, or answer tables into normalized word sets."""
     s = s.strip()
     # Tables contain metadata that must never become dictionary entries.
-    if re.search(r"(?m)^\s*[\"']?[A-Za-z]+[ \t]+(?:[0-9]+|(?:perfect[ \t]+)?pangram)\b", s, re.IGNORECASE):
-        if __package__:
-            from .transform_text import parse_word_block
-        else:
-            from transform_text import parse_word_block  # pylint: disable=import-error
+    if re.search(
+        r"(?m)^\s*[\"']?[A-Za-z]+[ \t]+"
+        r"(?:[0-9]+|(?:perfect[ \t]+)?pangram)\b",
+        s, re.IGNORECASE,
+    ):
         return set(parse_word_block(s))
     # Try JSON first
     try:
@@ -64,6 +73,7 @@ def parse_answers_str(s: str) -> Set[str]:
 
 
 def write_words_atomic(path: Path, words: Iterable[str]) -> None:
+    """Atomically write sorted words, preserving or restricting permissions."""
     path.parent.mkdir(parents=True, exist_ok=True)
     mode = stat.S_IMODE(path.stat().st_mode) if path.exists() else 0o600
     tmp_path = None
@@ -85,6 +95,7 @@ def write_words_atomic(path: Path, words: Iterable[str]) -> None:
 
 
 def backup_file(path: Path) -> Path:
+    """Create a unique timestamped backup with the source file's metadata."""
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     # Exclusive creation prevents repeated runs from overwriting a backup.
     with tempfile.NamedTemporaryFile(
@@ -120,12 +131,14 @@ def compute_changes(dict_words: Set[str], answers: Set[str], bad_words: Set[str]
 
 
 def load_system_words(path: Optional[Path]) -> Set[str]:
+    """Read an existing optional system dictionary or return an empty set."""
     if path and path.exists():
         return read_words(path)
     return set()
 
 
 def preview(title: str, items: Iterable[str], limit: int) -> None:
+    """Print a count and a sorted sample of words up to the display limit."""
     items = sorted(items)
     count = len(items)
     print(f"\n{title}: {count}")
@@ -139,9 +152,11 @@ def preview(title: str, items: Iterable[str], limit: int) -> None:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    """Preview dictionary changes or apply them with confirmation and backups."""
     parser = argparse.ArgumentParser(
         description=(
-            "Analyze and prune dictionary words using Spelling Bee outputs (bad/fake) and official answers. "
+            "Analyze and prune dictionary words using Spelling Bee outputs "
+            "(bad/fake) and official answers. "
             "By default runs in dry-run mode to show what would change."
         )
     )
@@ -152,8 +167,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     parser.add_argument(
         "--data-dir", "-D",
-        default=str(PRUNE_DIR), 
-        help="Directory containing answers_*.txt, fakes_*.txt, output_*.txt (default: prune/)" 
+        default=str(PRUNE_DIR),
+        help="Directory containing answers_*.txt, fakes_*.txt, output_*.txt (default: prune/)"
     )
     parser.add_argument(
         "--fakes", "-f",
@@ -164,37 +179,43 @@ def main(argv: Optional[List[str]] = None) -> int:
         help="Path to answers_*.txt"
     )
     parser.add_argument(
-        "--output", "-o", 
+        "--output", "-o",
         help="Path to output_*.txt; if provided with answers, fakes are computed in-memory"
     )
 
     # Inline answers
-    parser.add_argument("--answers-str", help="Answers provided inline (JSON array, comma- or whitespace-separated)")
-    parser.add_argument("--answers-stdin", action="store_true", help="Read answers from STDIN (one per line or pasted blob)")
+    parser.add_argument(
+        "--answers-str",
+        help="Answers provided inline (JSON array, comma- or whitespace-separated)",
+    )
+    parser.add_argument(
+        "--answers-stdin", action="store_true",
+        help="Read answers from STDIN (one per line or pasted blob)",
+    )
 
     # Behavior and safety
     parser.add_argument(
         "--dict",
         dest="dict_path",
-        default=str(DEFAULT_DICT), 
+        default=str(DEFAULT_DICT),
         help=f"Dictionary path (default: {DEFAULT_DICT})"
     )
     parser.add_argument(
-        "--apply", 
+        "--apply",
         "-A",
-        action="store_true", 
+        action="store_true",
         help="Apply changes (otherwise dry-run)"
     )
     parser.add_argument(
-        "--yes", 
+        "--yes",
         "-y",
-        action="store_true", 
+        action="store_true",
         help="Assume yes to prompts when applying"
     )
     parser.add_argument(
         "--no-add",
         "-n",
-        action="store_true", 
+        action="store_true",
         help="Do not add missing true words to dictionary"
     )
     parser.add_argument(
@@ -300,7 +321,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             system_words = load_system_words(sys_dict_path)
             effective_conservative = True
         else:
-            sys.exit(f"Error: system dictionary not found at {sys_dict_path}; cannot use --conservative.")
+            sys.exit(
+                f"Error: system dictionary not found at {sys_dict_path}; "
+                "cannot use --conservative."
+            )
 
     if effective_conservative:
         to_remove = {w for w in removal_candidates if w not in system_words}
@@ -338,7 +362,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     print(f"  Missing true in dict   : {len(missing_words):,}")
     print(f"  Removable candidates   : {len(removal_candidates):,}")
     if effective_conservative:
-        print(f"  After conservative check: {len(to_remove):,} will be removed (only if not in system dict)")
+        print(
+            f"  After conservative check: {len(to_remove):,} will be removed "
+            "(only if not in system dict)"
+        )
 
     preview("Missing words to ADD", missing_words, args.show)
     preview("Bad words to REMOVE", to_remove, args.show)
@@ -360,7 +387,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if not args.yes:
         try:
-            proceed = prompt_user("\nApply these changes to the dictionary? [y/N]: ").strip().lower()
+            proceed = prompt_user(
+                "\nApply these changes to the dictionary? [y/N]: "
+            ).strip().lower()
         except (OSError, EOFError, KeyboardInterrupt):
             proceed = ""
         if proceed not in {"y", "yes"}:
